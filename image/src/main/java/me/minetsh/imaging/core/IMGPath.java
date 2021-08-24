@@ -23,6 +23,9 @@ public class IMGPath {
     public static final float BASE_DOODLE_WIDTH = 20f;
 
     public static final float BASE_MOSAIC_WIDTH = 72f;
+    
+    // 缩放率
+    private float mScaleRate = 1f;
 
     public IMGPath() {
         this(new Path());
@@ -81,11 +84,15 @@ public class IMGPath {
     public float getWidth() {
         return width;
     }
+    
+    public void setScaleRate(float scaleRate) {
+        mScaleRate = scaleRate;
+    }
 
     public void onDrawDoodle(Canvas canvas, Paint paint) {
         if (mode == IMGMode.DOODLE) {
             paint.setColor(color);
-            paint.setStrokeWidth(BASE_DOODLE_WIDTH);
+            paint.setStrokeWidth(BASE_DOODLE_WIDTH * mScaleRate);
             // rewind
             canvas.drawPath(path, paint);
         }

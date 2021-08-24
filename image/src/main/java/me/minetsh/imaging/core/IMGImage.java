@@ -123,9 +123,17 @@ public class IMGImage {
 
     private static final int COLOR_SHADE = 0xCC000000;
 
+    // 初始的缩放比例
+    private float mInitialScale = -1;
+
     static {
         DEFAULT_IMAGE = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888);
     }
+
+    // 记录缩放前的中点
+    private boolean mIsSetCenterXY = true;
+    private float mLastCenterX = 0;
+    private float mLastCenterY = 0;
 
     {
         mShade.setFillType(Path.FillType.WINDING);
@@ -138,6 +146,10 @@ public class IMGImage {
         mPaint.setPathEffect(new CornerPathEffect(IMGPath.BASE_DOODLE_WIDTH));
         mPaint.setStrokeCap(Paint.Cap.ROUND);
         mPaint.setStrokeJoin(Paint.Join.ROUND);
+    }
+
+    public void resetCenterXY() {
+        mIsSetCenterXY = true;
     }
 
     public IMGImage() {
@@ -372,7 +384,7 @@ public class IMGImage {
 
             RectF win = new RectF(mWindow);
             win.offset(scrollX, scrollY);
-            homing.rConcat(IMGUtils.fitHoming(win, clipFrame, isRequestToBaseFitting));
+            homing.rConcat(IMGUtils.fitHoming(win, clipFrame, isRequestToBaseFitting, mLastCenterX, mLastCenterY));
             isRequestToBaseFitting = false;
         }
 
@@ -388,13 +400,19 @@ public class IMGImage {
     public void addPath(IMGPath path, float sx, float sy) {
         if (path == null) return;
 
+        if (mInitialScale < 0) {
+            mInitialScale = getScale();
+        }
         float scale = 1f / getScale();
 
         M.setTranslate(sx, sy);
+//        if (mInitialScale == getScale() || path.getMode() != IMGMode.DOODLE) {
+//        }
         M.postRotate(-getRotate(), mClipFrame.centerX(), mClipFrame.centerY());
         M.postTranslate(-mFrame.left, -mFrame.top);
         M.postScale(scale, scale);
         path.transform(M);
+        path.setScaleRate(mInitialScale / getScale());
 
         switch (path.getMode()) {
             case DOODLE:
@@ -680,6 +698,18 @@ public class IMGImage {
         return 1f * mFrame.width() / mImage.getWidth();
     }
 
+    public void resetInitialScale() {
+        mInitialScale = -1;
+    }
+
+    public float getInitialScale() {
+        if (mInitialScale < 0) {
+            mInitialScale = getScale();
+        }
+
+        return mInitialScale;
+    }
+
     public void setScale(float scale) {
         setScale(scale, mClipFrame.centerX(), mClipFrame.centerY());
     }
@@ -689,6 +719,11 @@ public class IMGImage {
     }
 
     public void onScale(float factor, float focusX, float focusY) {
+        if (mIsSetCenterXY) {
+            mIsSetCenterXY = false;
+            mLastCenterX = mFrame.centerX();
+            mLastCenterY = mFrame.centerY();
+        }
 
         if (factor == 1f) return;
 
@@ -718,7 +753,6 @@ public class IMGImage {
     }
 
     public void onScaleEnd() {
-
     }
 
     public void onHomingStart(boolean isRotate) {

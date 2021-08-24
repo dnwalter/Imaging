@@ -161,6 +161,7 @@ public class IMGView extends FrameLayout implements Runnable, ScaleGestureDetect
         mImage.clip(getScrollX(), getScrollY());
         setMode(mPreMode);
         onHoming();
+        mImage.resetInitialScale();
     }
 
     public void cancelClip() {
@@ -228,7 +229,7 @@ public class IMGView extends FrameLayout implements Runnable, ScaleGestureDetect
         mImage.onDrawDoodles(canvas);
         if (mImage.getMode() == IMGMode.DOODLE && !mPen.isEmpty()) {
             mDoodlePaint.setColor(mPen.getColor());
-            mDoodlePaint.setStrokeWidth(IMGPath.BASE_DOODLE_WIDTH * mImage.getScale());
+            mDoodlePaint.setStrokeWidth(IMGPath.BASE_DOODLE_WIDTH * mImage.getInitialScale());
             canvas.save();
             RectF frame = mImage.getClipFrame();
             canvas.rotate(-mImage.getRotate(), frame.centerX(), frame.centerY());
@@ -392,6 +393,7 @@ public class IMGView extends FrameLayout implements Runnable, ScaleGestureDetect
             case MotionEvent.ACTION_CANCEL:
                 mImage.onTouchUp(getScrollX(), getScrollY());
                 onHoming();
+                mImage.resetCenterXY();
                 break;
         }
 

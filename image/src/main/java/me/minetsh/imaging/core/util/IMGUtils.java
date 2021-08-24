@@ -11,6 +11,8 @@ import me.minetsh.imaging.core.homing.IMGHoming;
 
 public class IMGUtils {
 
+    // 可放大最大倍数
+    private static final float MAX_SCALE = 10f;
     private static final Matrix M = new Matrix();
 
     private IMGUtils() {
@@ -140,40 +142,63 @@ public class IMGUtils {
     }
 
 
-    public static IMGHoming fitHoming(RectF win, RectF frame, boolean isJustInner) {
+    public static IMGHoming fitHoming(RectF win, RectF frame, boolean isJustInner, float centerX, float centerY) {
         IMGHoming dHoming = new IMGHoming(0, 0, 1, 0);
 
-        if (frame.contains(win) && !isJustInner) {
+        float maxWidth = win.width() * MAX_SCALE;
+        float maxHeight = win.height() * MAX_SCALE;
+
+        if (frame.contains(win) && frame.width() < maxWidth + 1 && frame.height() < maxHeight + 1 && !isJustInner) {
             // 不需要Fit
             return dHoming;
         }
 
+        // 是否是从大缩到小
+        boolean isBigToSmall = false;
+
         // 宽高都小于Win，才有必要放大
         if (isJustInner || frame.width() < win.width() && frame.height() < win.height()) {
             dHoming.scale = Math.min(win.width() / frame.width(), win.height() / frame.height());
+        }else if (frame.width() > maxWidth && frame.height() > maxHeight) {
+            // 超出最大放大倍数
+            isBigToSmall = true;
+            dHoming.scale = Math.min(maxWidth / frame.width(), maxHeight / frame.height());
         }
 
         RectF rect = new RectF();
+//        if (isBigToSmall) {
+//            M.setScale(dHoming.scale, dHoming.scale, centerX, centerY);
+//        }else {
+//            M.setScale(dHoming.scale, dHoming.scale, frame.centerX(), frame.centerY());
+//        }
         M.setScale(dHoming.scale, dHoming.scale, frame.centerX(), frame.centerY());
         M.mapRect(rect, frame);
 
         if (rect.width() < win.width()) {
             dHoming.x += win.centerX() - rect.centerX();
-        } else {
-            if (rect.left > win.left) {
-                dHoming.x += win.left - rect.left;
-            } else if (rect.right < win.right) {
-                dHoming.x += win.right - rect.right;
+        }else {
+            if (isBigToSmall) {
+                dHoming.x += centerX - rect.centerX();
+            } else {
+                if (rect.left > win.left) {
+                    dHoming.x += win.left - rect.left;
+                } else if (rect.right < win.right) {
+                    dHoming.x += win.right - rect.right;
+                }
             }
         }
 
         if (rect.height() < win.height()) {
             dHoming.y += win.centerY() - rect.centerY();
         } else {
-            if (rect.top > win.top) {
-                dHoming.y += win.top - rect.top;
-            } else if (rect.bottom < win.bottom) {
-                dHoming.y += win.bottom - rect.bottom;
+            if (isBigToSmall) {
+                dHoming.y += centerY - rect.centerY();
+            } else {
+                if (rect.top > win.top) {
+                    dHoming.y += win.top - rect.top;
+                } else if (rect.bottom < win.bottom) {
+                    dHoming.y += win.bottom - rect.bottom;
+                }
             }
         }
 
