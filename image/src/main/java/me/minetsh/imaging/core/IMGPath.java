@@ -5,6 +5,12 @@ import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.graphics.Rect;
+import android.graphics.RectF;
+import android.util.Log;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by felix on 2017/11/22 下午6:13.
@@ -89,12 +95,49 @@ public class IMGPath {
         mScaleRate = scaleRate;
     }
 
+    // 用白矩阵扩充
+    public void onDrawWhiteRect(Canvas canvas, RectF frame, Matrix matrix) {
+        // 如果画的线超出图片，要用白色矩阵填充
+        RectF bounds = new RectF();
+        Path pathx = new Path(path);
+        pathx.transform(matrix);
+        pathx.computeBounds(bounds, false);
+
+        float width = BASE_DOODLE_WIDTH * mScaleRate;
+        List<Rect> rects = new ArrayList<>();
+        if (bounds.left < frame.left) {
+            Rect rectx = new Rect((int)Math.floor(bounds.left - width), (int)frame.top, (int)Math.ceil(frame.left), (int)frame.bottom);
+            rects.add(rectx);
+        }
+        if (bounds.right > frame.right) {
+            Rect rectx = new Rect((int)Math.floor(frame.right), (int)frame.top, (int)Math.ceil(bounds.right + width), (int)frame.bottom);
+            rects.add(rectx);
+        }
+        if (bounds.top < frame.top) {
+            Rect rectx = new Rect((int)frame.left, (int)Math.floor(bounds.top - width), (int)frame.right, (int) Math.ceil(frame.top));
+            rects.add(rectx);
+        }
+        if (bounds.bottom > frame.bottom) {
+            Rect rectx = new Rect((int)frame.left, (int)Math.floor(frame.bottom), (int)frame.right, (int)Math.ceil(bounds.bottom + width));
+            rects.add(rectx);
+        }
+
+        Paint paintWhite = new Paint();
+        paintWhite.setColor(Color.WHITE);
+        paintWhite.setStyle(Paint.Style.FILL);
+        for (Rect r : rects) {
+            canvas.drawRect(r, paintWhite);
+        }
+    }
+
     public void onDrawDoodle(Canvas canvas, Paint paint) {
         if (mode == IMGMode.DOODLE) {
+            // 画线
             paint.setColor(color);
             paint.setStrokeWidth(BASE_DOODLE_WIDTH * mScaleRate);
             // rewind
             canvas.drawPath(path, paint);
+
         }
     }
 

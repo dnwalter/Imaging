@@ -117,8 +117,6 @@ public class IMGImage {
 
     private Matrix M = new Matrix();
 
-    private static final boolean DEBUG = false;
-
     private static final Bitmap DEFAULT_IMAGE;
 
     private static final int COLOR_SHADE = 0xCC000000;
@@ -135,6 +133,9 @@ public class IMGImage {
     private float mLastCenterX = 0;
     private float mLastCenterY = 0;
 
+    // 是否开始裁剪
+    private boolean mIsStartClip = false;
+
     {
         mShade.setFillType(Path.FillType.WINDING);
 
@@ -146,6 +147,26 @@ public class IMGImage {
         mPaint.setPathEffect(new CornerPathEffect(IMGPath.BASE_DOODLE_WIDTH));
         mPaint.setStrokeCap(Paint.Cap.ROUND);
         mPaint.setStrokeJoin(Paint.Join.ROUND);
+    }
+
+    // 重置数据
+    public void resetBitmap(Bitmap bitmap) {
+        mIsStartClip = false;
+        mFrame = new RectF();
+        mClipFrame = new RectF();
+        mTempClipFrame = new RectF();
+        mBackupClipFrame = new RectF();
+        mBackupClipRotate = 0;
+        mRotate = 0;
+        mTargetRotate = 0;
+        mClipWin = new IMGClipWindow();
+        mForeSticker = null;
+        mBackStickers = new ArrayList<>();
+        mDoodles = new ArrayList<>();
+        mMosaics = new ArrayList<>();
+        M = new Matrix();
+
+        setBitmap(bitmap);
     }
 
     public void resetCenterXY() {
@@ -330,6 +351,10 @@ public class IMGImage {
 
     public RectF getFrame() {
         return mFrame;
+    }
+
+    public RectF getWindow() {
+        return mWindow;
     }
 
     public boolean onClipHoming() {
@@ -535,19 +560,17 @@ public class IMGImage {
 
     public void onDrawImage(Canvas canvas) {
 
-        // 裁剪区域
-        canvas.clipRect(mClipWin.isClipping() ? mFrame : mClipFrame);
+        if (!mIsStartClip) {
+            mIsStartClip = mClipWin.isClipping();
+        }
+
+        if (mIsStartClip) {
+            // 裁剪区域
+            canvas.clipRect(mClipWin.isClipping() ? mFrame : mClipFrame);
+        }
 
         // 绘制图片
         canvas.drawBitmap(mImage, null, mFrame, null);
-
-        if (DEBUG) {
-            // Clip 区域
-            mPaint.setColor(Color.RED);
-            mPaint.setStrokeWidth(6);
-            canvas.drawRect(mFrame, mPaint);
-            canvas.drawRect(mClipFrame, mPaint);
-        }
     }
 
     public int onDrawMosaicsPath(Canvas canvas) {
@@ -572,12 +595,23 @@ public class IMGImage {
         canvas.restoreToCount(layerCount);
     }
 
-    public void onDrawDoodles(Canvas canvas) {
+    public void onDrawDoodles(Canvas canvas, float sx, float sy) {
         if (!isDoodleEmpty()) {
             canvas.save();
+
             float scale = getScale();
+            Matrix matrix = new Matrix();
+//            matrix.setTranslate(-sx, -sy);
+            matrix.preTranslate(mFrame.left, mFrame.top);
+            matrix.preScale(scale, scale);
+
+            for (IMGPath path : mDoodles) {
+                path.onDrawWhiteRect(canvas, mFrame, matrix);
+            }
+
             canvas.translate(mFrame.left, mFrame.top);
             canvas.scale(scale, scale);
+
             for (IMGPath path : mDoodles) {
                 path.onDrawDoodle(canvas, mPaint);
             }

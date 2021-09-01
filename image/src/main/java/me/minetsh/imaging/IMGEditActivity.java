@@ -43,6 +43,12 @@ public class IMGEditActivity extends IMGEditBaseActivity {
             return null;
         }
 
+        if (IMGUtils.getsTempBitmap() != null) {
+            Bitmap bitmap = IMGUtils.getsTempBitmap();
+            IMGUtils.setsTempBitmap(null);
+            return bitmap;
+        }
+
         Uri uri = intent.getParcelableExtra(EXTRA_IMAGE_URI);
         if (uri == null) {
             return null;
@@ -165,6 +171,8 @@ public class IMGEditActivity extends IMGEditBaseActivity {
     public void onDoneClipClick() {
         mImgView.doClip();
         setOpDisplay(mImgView.getMode() == IMGMode.CLIP ? OP_CLIP : OP_NORMAL);
+        onModeClick(IMGMode.NONE);
+        mImgView.setNeedResetBitmap(true);
     }
 
     @Override

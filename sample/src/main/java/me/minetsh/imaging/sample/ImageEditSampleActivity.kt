@@ -21,6 +21,7 @@ class ImageEditSampleActivity : AppCompatActivity() {
 
     private var mImageFile: File? = null
 
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_image_edit_sample)
