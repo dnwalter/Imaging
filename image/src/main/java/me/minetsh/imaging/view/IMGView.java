@@ -2,9 +2,7 @@ package me.minetsh.imaging.view;
 
 import android.animation.Animator;
 import android.animation.ValueAnimator;
-import android.app.Activity;
 import android.content.Context;
-import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -13,7 +11,6 @@ import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PathMeasure;
-import android.graphics.Rect;
 import android.graphics.RectF;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -26,16 +23,15 @@ import android.view.ViewGroup;
 import android.view.ViewParent;
 import android.widget.FrameLayout;
 
-import me.minetsh.imaging.IMGEditActivity;
 import me.minetsh.imaging.core.IMGImage;
 import me.minetsh.imaging.core.IMGMode;
 import me.minetsh.imaging.core.IMGPath;
 import me.minetsh.imaging.core.IMGText;
 import me.minetsh.imaging.core.anim.IMGHomingAnimator;
 import me.minetsh.imaging.core.homing.IMGHoming;
+import me.minetsh.imaging.core.interfaces.IIMGViewCallback;
 import me.minetsh.imaging.core.sticker.IMGSticker;
 import me.minetsh.imaging.core.sticker.IMGStickerPortrait;
-import me.minetsh.imaging.core.util.IMGUtils;
 
 /**
  * Created by felix on 2017/11/14 下午6:43.
@@ -99,6 +95,12 @@ public class IMGView extends FrameLayout implements Runnable, ScaleGestureDetect
     }
 
     private void initialize(Context context) {
+        mImage.setViewCallback(new IIMGViewCallback() {
+            @Override
+            public void onHoming() {
+                postDelayed(IMGView.this, 500);
+            }
+        });
         mPen.setMode(mImage.getMode());
         mGDetector = new GestureDetector(context, new MoveAdapter());
         mSGDetector = new ScaleGestureDetector(context, this);
@@ -234,12 +236,6 @@ public class IMGView extends FrameLayout implements Runnable, ScaleGestureDetect
 
         // 图片
         mImage.onDrawImage(canvas);
-
-//        Paint paint = new Paint();
-//        paint.setColor(Color.GREEN);
-//        paint.setStyle(Paint.Style.FILL);
-//        Rect rect1 = new Rect(0,0,400,900);
-//        canvas.drawRect(rect1, paint);
 
         // 马赛克
         if (!mImage.isMosaicEmpty() || (mImage.getMode() == IMGMode.MOSAIC && !mPen.isEmpty())) {
@@ -388,7 +384,7 @@ public class IMGView extends FrameLayout implements Runnable, ScaleGestureDetect
                 break;
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL:
-                postDelayed(this, 1200);
+                postDelayed(this, 1000);
                 break;
         }
         return onTouch(event);
@@ -593,7 +589,7 @@ public class IMGView extends FrameLayout implements Runnable, ScaleGestureDetect
         if (DEBUG) {
             Log.d(TAG, "onAnimationEnd");
         }
-        if (mImage.onHomingEnd(getScrollX(), getScrollY(), mHomingAnimator.isRotate())) {
+        if (mImage.onHomingEnd(getScrollX(), getScrollY(), mHomingAnimator.isRotate(), mIsNeedResetBitmap)) {
             toApplyHoming(mImage.clip(getScrollX(), getScrollY()));
         }
 

@@ -15,6 +15,7 @@ import android.util.Log;
 import me.minetsh.imaging.core.clip.IMGClip;
 import me.minetsh.imaging.core.clip.IMGClipWindow;
 import me.minetsh.imaging.core.homing.IMGHoming;
+import me.minetsh.imaging.core.interfaces.IIMGViewCallback;
 import me.minetsh.imaging.core.sticker.IMGSticker;
 import me.minetsh.imaging.core.util.IMGUtils;
 
@@ -32,8 +33,10 @@ public class IMGImage {
     private Bitmap mImage, mMosaicImage;
 
     /**
-     * 完整图片边框
+     * 原图片边框
      */
+    private RectF mOriginFrame = new RectF();
+    // 包括自己填充白底的图片边框
     private RectF mFrame = new RectF();
 
     /**
@@ -128,13 +131,16 @@ public class IMGImage {
         DEFAULT_IMAGE = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888);
     }
 
-    // 记录缩放前的中点
+    // 记录缩放前原图片的中点
     private boolean mIsSetCenterXY = true;
     private float mLastCenterX = 0;
     private float mLastCenterY = 0;
 
     // 是否开始裁剪
     private boolean mIsStartClip = false;
+
+    // 额外增加的白底的四个角，相对于原frame的偏移量
+    private float[] mWhiteOffset = {0, 0, 0, 0};
 
     {
         mShade.setFillType(Path.FillType.WINDING);
@@ -151,8 +157,10 @@ public class IMGImage {
 
     // 重置数据
     public void resetBitmap(Bitmap bitmap) {
+        mWhiteOffset = new float[]{0 ,0 ,0 ,0};
         mIsStartClip = false;
         mFrame = new RectF();
+        mOriginFrame = new RectF();
         mClipFrame = new RectF();
         mTempClipFrame = new RectF();
         mBackupClipFrame = new RectF();
@@ -179,6 +187,11 @@ public class IMGImage {
         if (mMode == IMGMode.CLIP) {
             initShadePaint();
         }
+    }
+
+    private IIMGViewCallback mViewCallback;
+    public void setViewCallback(IIMGViewCallback callback) {
+        mViewCallback = callback;
     }
 
     public void setBitmap(Bitmap bitmap) {
@@ -219,6 +232,29 @@ public class IMGImage {
 
             // 初始化Shade 画刷
             initShadePaint();
+
+            // 修改要裁剪的区域
+            for (int i = 0; i < 4; i++) { // todo ousyxx
+                float offset = mWhiteOffset[i];
+                switch (i) {
+                    case 0:
+                        mFrame.left += offset;
+                        mClipFrame.left += offset;
+                        break;
+                    case 1:
+                        mFrame.top += offset;
+                        mClipFrame.top += offset;
+                        break;
+                    case 2:
+                        mFrame.right += offset;
+                        mClipFrame.right += offset;
+                        break;
+                    case 3:
+                        mFrame.bottom += offset;
+                        mClipFrame.bottom += offset;
+                        break;
+                }
+            }
 
             // 备份裁剪前Clip 区域
             mBackupClipRotate = getRotate();
@@ -307,6 +343,7 @@ public class IMGImage {
         M.mapRect(mClipFrame, mBackupClipFrame);
         setTargetRotate(mBackupClipRotate);
         isRequestToBaseFitting = true;
+        mIsStartClip = false;
     }
 
     public void resetClip() {
@@ -434,7 +471,7 @@ public class IMGImage {
 //        if (mInitialScale == getScale() || path.getMode() != IMGMode.DOODLE) {
 //        }
         M.postRotate(-getRotate(), mClipFrame.centerX(), mClipFrame.centerY());
-        M.postTranslate(-mFrame.left, -mFrame.top);
+        M.postTranslate(-mOriginFrame.left, -mOriginFrame.top);
         M.postScale(scale, scale);
         path.transform(M);
         path.setScaleRate(mInitialScale / getScale());
@@ -513,6 +550,7 @@ public class IMGImage {
             // Pivot to fit window.
             M.setTranslate(mWindow.centerX() - mClipFrame.centerX(), mWindow.centerY() - mClipFrame.centerY());
             M.mapRect(mFrame);
+            M.mapRect(mOriginFrame);
             M.mapRect(mClipFrame);
         }
 
@@ -520,6 +558,7 @@ public class IMGImage {
     }
 
     private void onInitialHoming(float width, float height) {
+        mOriginFrame.set(0, 0, mImage.getWidth(), mImage.getHeight());
         mFrame.set(0, 0, mImage.getWidth(), mImage.getHeight());
         mClipFrame.set(mFrame);
         mClipWin.setClipWinSize(width, height);
@@ -549,6 +588,7 @@ public class IMGImage {
         M.setScale(scale, scale, mClipFrame.centerX(), mClipFrame.centerY());
         M.postTranslate(mWindow.centerX() - mClipFrame.centerX(), mWindow.centerY() - mClipFrame.centerY());
         M.mapRect(mFrame);
+        M.mapRect(mOriginFrame);
         M.mapRect(mClipFrame);
     }
 
@@ -570,7 +610,7 @@ public class IMGImage {
         }
 
         // 绘制图片
-        canvas.drawBitmap(mImage, null, mFrame, null);
+        canvas.drawBitmap(mImage, null, mOriginFrame, null);
     }
 
     public int onDrawMosaicsPath(Canvas canvas) {
@@ -596,26 +636,28 @@ public class IMGImage {
     }
 
     public void onDrawDoodles(Canvas canvas, float sx, float sy) {
+        float[] lastWhiteOffset = mWhiteOffset.clone();
         if (!isDoodleEmpty()) {
             canvas.save();
 
             float scale = getScale();
             Matrix matrix = new Matrix();
-//            matrix.setTranslate(-sx, -sy);
-            matrix.preTranslate(mFrame.left, mFrame.top);
+            matrix.preTranslate(mOriginFrame.left, mOriginFrame.top);
             matrix.preScale(scale, scale);
 
             for (IMGPath path : mDoodles) {
-                path.onDrawWhiteRect(canvas, mFrame, matrix);
+                path.onDrawWhiteRect(canvas, mOriginFrame, matrix, mWhiteOffset);
             }
 
-            canvas.translate(mFrame.left, mFrame.top);
+            canvas.translate(mOriginFrame.left, mOriginFrame.top);
             canvas.scale(scale, scale);
 
             for (IMGPath path : mDoodles) {
                 path.onDrawDoodle(canvas, mPaint);
             }
             canvas.restore();
+        } else {
+            mWhiteOffset = new float[]{0 ,0 ,0 ,0};
         }
     }
 
@@ -729,7 +771,7 @@ public class IMGImage {
     }
 
     public float getScale() {
-        return 1f * mFrame.width() / mImage.getWidth();
+        return 1f * mOriginFrame.width() / mImage.getWidth();
     }
 
     public void resetInitialScale() {
@@ -768,13 +810,8 @@ public class IMGImage {
 
         M.setScale(factor, factor, focusX, focusY);
         M.mapRect(mFrame);
+        M.mapRect(mOriginFrame); // todo ousy
         M.mapRect(mClipFrame);
-
-        // 修正clip 窗口
-        if (!mFrame.contains(mClipFrame)) {
-            // TODO
-//            mClipFrame.intersect(mFrame);
-        }
 
         for (IMGSticker sticker : mBackStickers) {
             M.mapRect(sticker.getFrame());
@@ -798,7 +835,15 @@ public class IMGImage {
         mClipWin.homing(fraction);
     }
 
-    public boolean onHomingEnd(float scrollX, float scrollY, boolean isRotate) {
+    /**
+     *
+     * @param scrollX
+     * @param scrollY
+     * @param rotate
+     * @param isNeedResetBitmap 代表点击完成剪辑
+     * @return
+     */
+    public boolean onHomingEnd(float scrollX, float scrollY, boolean rotate, boolean isNeedResetBitmap) {
         isDrawClip = true;
         if (mMode == IMGMode.CLIP) {
             // 开启裁剪模式
@@ -812,6 +857,34 @@ public class IMGImage {
             return clip;
         } else {
             if (isFreezing && !isAnimCanceled) {
+                if (!isNeedResetBitmap) {
+                    for (int i = 0; i < 4; i++) { // todo ousyxx
+                        float offset = mWhiteOffset[i];
+                        switch (i) {
+                            case 0:
+                                mFrame.left -= offset;
+                                mClipFrame.left -= offset;
+                                break;
+                            case 1:
+                                mFrame.top -= offset;
+                                mClipFrame.top -= offset;
+                                break;
+                            case 2:
+                                mFrame.right -= offset;
+                                mClipFrame.right -= offset;
+                                break;
+                            case 3:
+                                mFrame.bottom -= offset;
+                                mClipFrame.bottom -= offset;
+                                break;
+                        }
+                    }
+
+                    if (mViewCallback != null) {
+                        mViewCallback.onHoming();
+                    }
+                }
+
                 setFreezing(false);
             }
         }

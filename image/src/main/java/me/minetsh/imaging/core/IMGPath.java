@@ -96,37 +96,49 @@ public class IMGPath {
     }
 
     // 用白矩阵扩充
-    public void onDrawWhiteRect(Canvas canvas, RectF frame, Matrix matrix) {
+    public void onDrawWhiteRect(Canvas canvas, RectF frame, Matrix matrix, float[] whiteOffset) {
         // 如果画的线超出图片，要用白色矩阵填充
         RectF bounds = new RectF();
         Path pathx = new Path(path);
         pathx.transform(matrix);
         pathx.computeBounds(bounds, false);
 
-        float width = BASE_DOODLE_WIDTH * mScaleRate;
-        List<Rect> rects = new ArrayList<>();
+        float width = BASE_DOODLE_WIDTH * mScaleRate; // todo ousy 这个width不是同比例缩放，导致不同图片看到涂鸦和白底的小间距不一样
+        List<RectF> rects = new ArrayList<>();
         if (bounds.left < frame.left) {
-            Rect rectx = new Rect((int)Math.floor(bounds.left - width), (int)frame.top, (int)Math.ceil(frame.left), (int)frame.bottom);
+            if (bounds.left - frame.left < whiteOffset[0]) {
+                whiteOffset[0] = bounds.left - frame.left;
+            }
+            RectF rectx = new RectF(bounds.left, frame.top, frame.left, frame.bottom);
             rects.add(rectx);
         }
         if (bounds.right > frame.right) {
-            Rect rectx = new Rect((int)Math.floor(frame.right), (int)frame.top, (int)Math.ceil(bounds.right + width), (int)frame.bottom);
+            if (bounds.right - frame.right > whiteOffset[2]) {
+                whiteOffset[2] = bounds.right - frame.right;
+            }
+            RectF rectx = new RectF(frame.right, frame.top, bounds.right, frame.bottom);
             rects.add(rectx);
         }
         if (bounds.top < frame.top) {
-            Rect rectx = new Rect((int)frame.left, (int)Math.floor(bounds.top - width), (int)frame.right, (int) Math.ceil(frame.top));
+            if (bounds.top - frame.top < whiteOffset[1]) {
+                whiteOffset[1] = bounds.top - frame.top;
+            }
+            RectF rectx = new RectF(frame.left, bounds.top, frame.right, frame.top);
             rects.add(rectx);
         }
         if (bounds.bottom > frame.bottom) {
-            Rect rectx = new Rect((int)frame.left, (int)Math.floor(frame.bottom), (int)frame.right, (int)Math.ceil(bounds.bottom + width));
+            if (bounds.bottom - frame.bottom > whiteOffset[3]) {
+                whiteOffset[3] = bounds.bottom - frame.bottom;
+            }
+            RectF rectx = new RectF(frame.left, frame.bottom, frame.right, bounds.bottom);
             rects.add(rectx);
         }
 
         Paint paintWhite = new Paint();
         paintWhite.setColor(Color.WHITE);
         paintWhite.setStyle(Paint.Style.FILL);
-        for (Rect r : rects) {
-            canvas.drawRect(r, paintWhite);
+        for (RectF rectF : rects) {
+            canvas.drawRect(rectF, paintWhite);
         }
     }
 
