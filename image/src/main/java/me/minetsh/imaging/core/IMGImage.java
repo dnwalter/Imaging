@@ -9,6 +9,7 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Region;
 import android.util.Log;
@@ -474,6 +475,11 @@ public class IMGImage {
         }
     }
 
+    private Rect mRegion;
+    public Rect getRegion() {
+        return mRegion;
+    }
+
     // 判断这个坐标是否在涂鸦上
     public boolean checkPoint(float x, float y) {
         boolean result = false;
@@ -490,8 +496,9 @@ public class IMGImage {
             path.computeBounds(bounds, true);
             Region region = new Region();
             boolean isRegion = region.setPath(path, new Region((int)bounds.left, (int)bounds.top,(int)bounds.right, (int)bounds.bottom));
-            float radius = imgPath.getPaintWidth() * 0.5f;
+            float radius = imgPath.getPaintWidth() * scale * 0.5f;
             Region regionPoint = new Region((int)(x - radius), (int)(y - radius), (int)(x + radius), (int)(y + radius));
+            mRegion = new Rect((int)(x - radius), (int)(y - radius), (int)(x + radius), (int)(y + radius));;
             // 是否生成了区域
             if (isRegion) {
                 regionPoint.op(region, Region.Op.INTERSECT);

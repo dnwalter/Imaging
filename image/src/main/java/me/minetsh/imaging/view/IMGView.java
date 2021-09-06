@@ -293,6 +293,14 @@ public class IMGView extends FrameLayout implements Runnable, ScaleGestureDetect
             mImage.onDrawClip(canvas, getScrollX(), getScrollY());
             canvas.restore();
         }
+
+//        if (mImage.getRegion() != null) {
+//            Paint paint = new Paint();
+//            paint.setColor(Color.BLUE);
+//            paint.setStyle(Paint.Style.STROKE);
+//            paint.setStrokeWidth(5);
+//            canvas.drawRect(mImage.getRegion(), paint);
+//        }
     }
 
     public Bitmap saveBitmap() {
@@ -412,7 +420,7 @@ public class IMGView extends FrameLayout implements Runnable, ScaleGestureDetect
                 case MotionEvent.ACTION_DOWN:
                     mSecondEditX = event.getX();
                     mSecondEditY = event.getY();
-                    mIsSecondEdit = mImage.checkPoint(mSecondEditX, mSecondEditY);
+                    mIsSecondEdit = mImage.checkPoint(mSecondEditX + getScrollX(), mSecondEditY + getScrollY());
                     if (mIsSecondEdit) {
                         invalidate();
                     }
