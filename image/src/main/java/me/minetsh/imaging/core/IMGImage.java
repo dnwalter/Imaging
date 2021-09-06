@@ -10,7 +10,11 @@ import android.graphics.Path;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.RectF;
+import android.graphics.Region;
 import android.util.Log;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import me.minetsh.imaging.core.clip.IMGClip;
 import me.minetsh.imaging.core.clip.IMGClipWindow;
@@ -18,9 +22,6 @@ import me.minetsh.imaging.core.homing.IMGHoming;
 import me.minetsh.imaging.core.interfaces.IIMGViewCallback;
 import me.minetsh.imaging.core.sticker.IMGSticker;
 import me.minetsh.imaging.core.util.IMGUtils;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Created by felix on 2017/11/21 下午10:03.
@@ -106,6 +107,8 @@ public class IMGImage {
      * 涂鸦路径
      */
     private List<IMGPath> mDoodles = new ArrayList<>();
+    // 被点击选中的涂鸦的下标
+    private int mCheckedDoodleIndex = -1;
 
     /**
      * 马赛克路径
@@ -234,7 +237,7 @@ public class IMGImage {
             initShadePaint();
 
             // 修改要裁剪的区域
-            for (int i = 0; i < 4; i++) { // todo ousyxx
+            for (int i = 0; i < 4; i++) {
                 float offset = mWhiteOffset[i];
                 switch (i) {
                     case 0:
@@ -390,10 +393,6 @@ public class IMGImage {
         return mFrame;
     }
 
-    public RectF getWindow() {
-        return mWindow;
-    }
-
     public boolean onClipHoming() {
         return mClipWin.homing();
     }
@@ -457,6 +456,64 @@ public class IMGImage {
         if (sticker != null) {
             moveToForeground(sticker);
         }
+    }
+
+    // 移动涂鸦
+    public void moveDoodle(float dx, float dy) {
+        if (mCheckedDoodleIndex >= 0 && mCheckedDoodleIndex < mDoodles.size()) {
+            float scale = getScale();
+            Matrix matrix = new Matrix();
+            matrix.preTranslate(mOriginFrame.left, mOriginFrame.top);
+            matrix.preScale(scale, scale);
+
+            matrix.postTranslate(dx, dy);
+            matrix.postTranslate(-mOriginFrame.left, -mOriginFrame.top);
+            matrix.postScale(1f / getScale(), 1f / getScale());
+
+            mDoodles.get(mCheckedDoodleIndex).path.transform(matrix);
+        }
+    }
+
+    // 判断这个坐标是否在涂鸦上
+    public boolean checkPoint(float x, float y) {
+        boolean result = false;
+        float scale = getScale();
+        Matrix matrix = new Matrix();
+        matrix.preTranslate(mOriginFrame.left, mOriginFrame.top);
+        matrix.preScale(scale, scale);
+        int i = mDoodles.size() - 1;
+        for(; i >= 0; i--) {
+            IMGPath imgPath = mDoodles.get(i);
+            RectF bounds = new RectF();
+            Path path = new Path(imgPath.getPath());
+            path.transform(matrix);
+            path.computeBounds(bounds, true);
+            Region region = new Region();
+            boolean isRegion = region.setPath(path, new Region((int)bounds.left, (int)bounds.top,(int)bounds.right, (int)bounds.bottom));
+            float radius = imgPath.getPaintWidth() * 0.5f;
+            Region regionPoint = new Region((int)(x - radius), (int)(y - radius), (int)(x + radius), (int)(y + radius));
+            // 是否生成了区域
+            if (isRegion) {
+                regionPoint.op(region, Region.Op.INTERSECT);
+            }else {
+                regionPoint.op(new Region((int)bounds.left, (int)bounds.top, (int)bounds.right, (int)bounds.bottom), Region.Op.INTERSECT);
+            }
+
+            if (!regionPoint.isEmpty()) {
+                // 点击位置和涂鸦相交
+                mCheckedDoodleIndex = i;
+                result = true;
+                Log.e("ousyxx", "isTrue-----------");
+                break;
+            }
+
+            Log.e("ousyxx", "rect:" + bounds.left + ","+ bounds.top + ","+ bounds.right + ","+ bounds.bottom);
+            Log.e("ousyxx", "point:" + x + "," + y);
+        }
+
+        mCheckedDoodleIndex = i;
+
+        return result;
     }
 
     public void addPath(IMGPath path, float sx, float sy) {
@@ -636,7 +693,6 @@ public class IMGImage {
     }
 
     public void onDrawDoodles(Canvas canvas, float sx, float sy) {
-        float[] lastWhiteOffset = mWhiteOffset.clone();
         if (!isDoodleEmpty()) {
             canvas.save();
 
@@ -652,8 +708,9 @@ public class IMGImage {
             canvas.translate(mOriginFrame.left, mOriginFrame.top);
             canvas.scale(scale, scale);
 
-            for (IMGPath path : mDoodles) {
-                path.onDrawDoodle(canvas, mPaint);
+            for (int i = 0; i < mDoodles.size(); i++) {
+                IMGPath path = mDoodles.get(i);
+                path.onDrawDoodle(canvas, mPaint, i == mCheckedDoodleIndex);
             }
             canvas.restore();
         } else {
@@ -858,7 +915,7 @@ public class IMGImage {
         } else {
             if (isFreezing && !isAnimCanceled) {
                 if (!isNeedResetBitmap) {
-                    for (int i = 0; i < 4; i++) { // todo ousyxx
+                    for (int i = 0; i < 4; i++) {
                         float offset = mWhiteOffset[i];
                         switch (i) {
                             case 0:

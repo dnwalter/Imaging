@@ -6,16 +6,16 @@ import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.text.TextUtils;
 
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+
 import me.minetsh.imaging.core.IMGMode;
 import me.minetsh.imaging.core.IMGText;
 import me.minetsh.imaging.core.file.IMGAssetFileDecoder;
 import me.minetsh.imaging.core.file.IMGDecoder;
 import me.minetsh.imaging.core.file.IMGFileDecoder;
 import me.minetsh.imaging.core.util.IMGUtils;
-
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
 
 /**
  * Created by felix on 2017/11/14 下午2:26.
@@ -41,12 +41,6 @@ public class IMGEditActivity extends IMGEditBaseActivity {
         Intent intent = getIntent();
         if (intent == null) {
             return null;
-        }
-
-        if (IMGUtils.getsTempBitmap() != null) {
-            Bitmap bitmap = IMGUtils.getsTempBitmap();
-            IMGUtils.setsTempBitmap(null);
-            return bitmap;
         }
 
         Uri uri = intent.getParcelableExtra(EXTRA_IMAGE_URI);

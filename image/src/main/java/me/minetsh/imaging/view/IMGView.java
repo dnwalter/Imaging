@@ -63,6 +63,10 @@ public class IMGView extends FrameLayout implements Runnable, ScaleGestureDetect
     private static final boolean DEBUG = true;
     private boolean mIsNeedResetBitmap; // 是否需要重置bitmap
 
+    private boolean mIsSecondEdit = false; // 是否进入二次编辑的状态（可以拖动涂鸦）
+    private float mSecondEditX; // 二次编辑移动涂鸦的x坐标
+    private float mSecondEditY; // 二次编辑移动涂鸦的y坐标
+
     {
         // 涂鸦画刷
         mDoodlePaint.setStyle(Paint.Style.STROKE);
@@ -402,6 +406,35 @@ public class IMGView extends FrameLayout implements Runnable, ScaleGestureDetect
         boolean handled = mSGDetector.onTouchEvent(event);
 
         IMGMode mode = mImage.getMode();
+
+        if (mPointerCount == 1 && (mode == IMGMode.NONE)) {
+            switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    mSecondEditX = event.getX();
+                    mSecondEditY = event.getY();
+                    mIsSecondEdit = mImage.checkPoint(mSecondEditX, mSecondEditY);
+                    if (mIsSecondEdit) {
+                        invalidate();
+                    }
+                    break;
+                case MotionEvent.ACTION_MOVE:
+                    if (mIsSecondEdit) {
+                        float x = event.getX() - mSecondEditX;
+                        float y = event.getY() - mSecondEditY;
+                        mImage.moveDoodle(x, y);
+                        invalidate();
+                        mSecondEditX = event.getX();
+                        mSecondEditY = event.getY();
+                    }
+                    break;
+            }
+        }
+
+        if (mIsSecondEdit) {
+            // todo ousy 图片缩放为原来大小
+            // 进入二次编辑后，后面缩放等手势全部不执行
+            return true;
+        }
 
         if (mode == IMGMode.NONE || mode == IMGMode.CLIP) {
             handled |= onTouchNONE(event);

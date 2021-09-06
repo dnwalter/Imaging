@@ -2,6 +2,7 @@ package me.minetsh.imaging.core;
 
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.CornerPathEffect;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
@@ -95,13 +96,17 @@ public class IMGPath {
         mScaleRate = scaleRate;
     }
 
+    public float getPaintWidth() {
+        return mScaleRate * BASE_DOODLE_WIDTH;
+    }
+
     // 用白矩阵扩充
     public void onDrawWhiteRect(Canvas canvas, RectF frame, Matrix matrix, float[] whiteOffset) {
         // 如果画的线超出图片，要用白色矩阵填充
         RectF bounds = new RectF();
         Path pathx = new Path(path);
         pathx.transform(matrix);
-        pathx.computeBounds(bounds, false);
+        pathx.computeBounds(bounds, true);
 
         float width = BASE_DOODLE_WIDTH * mScaleRate; // todo ousy 这个width不是同比例缩放，导致不同图片看到涂鸦和白底的小间距不一样
         List<RectF> rects = new ArrayList<>();
@@ -142,11 +147,28 @@ public class IMGPath {
         }
     }
 
-    public void onDrawDoodle(Canvas canvas, Paint paint) {
+    /**
+     *
+     * @param canvas
+     * @param paint
+     * @param isChecked
+     */
+    public void onDrawDoodle(Canvas canvas, Paint paint, boolean isChecked) {
         if (mode == IMGMode.DOODLE) {
+            if (isChecked) {
+                // todo ousy UI的设计师2px，要根据dp转换
+                float width = (BASE_DOODLE_WIDTH + 4f) * mScaleRate;
+                Paint paintShadow = new Paint(paint);
+                paintShadow.setStrokeWidth(width);
+                paintShadow.setColor(Color.WHITE);
+                paintShadow.setAlpha(102);
+                paintShadow.setPathEffect(new CornerPathEffect(width));
+                canvas.drawPath(new Path(path), paintShadow);
+            }
             // 画线
             paint.setColor(color);
             paint.setStrokeWidth(BASE_DOODLE_WIDTH * mScaleRate);
+            paint.setPathEffect(new CornerPathEffect(BASE_DOODLE_WIDTH * mScaleRate));
             // rewind
             canvas.drawPath(path, paint);
 

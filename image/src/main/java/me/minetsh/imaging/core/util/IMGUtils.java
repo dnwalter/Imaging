@@ -16,18 +16,8 @@ public class IMGUtils {
     private static final float MAX_SCALE = 10f;
     private static final Matrix M = new Matrix();
 
-    private static Bitmap sTempBitmap;
-
     private IMGUtils() {
 
-    }
-
-    public static Bitmap getsTempBitmap() {
-        return sTempBitmap;
-    }
-
-    public static void setsTempBitmap(Bitmap sTempBitmap) {
-        IMGUtils.sTempBitmap = sTempBitmap;
     }
 
     public static void center(RectF win, RectF frame) {
