@@ -14,6 +14,7 @@ import android.graphics.RectF;
 import android.graphics.Region;
 import android.util.Log;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -144,7 +145,7 @@ public class IMGImage {
     private boolean mIsStartClip = false;
 
     // 额外增加的白底的四个角，相对于原frame的偏移量
-    private float[] mWhiteOffset = {0, 0, 0, 0};
+    private float[] mWhiteOffset = {0, 0, 0, 0}; // todo ousy
 
     {
         mShade.setFillType(Path.FillType.WINDING);
@@ -237,28 +238,28 @@ public class IMGImage {
             // 初始化Shade 画刷
             initShadePaint();
 
-            // 修改要裁剪的区域
-            for (int i = 0; i < 4; i++) {
-                float offset = mWhiteOffset[i];
-                switch (i) {
-                    case 0:
-                        mFrame.left += offset;
-                        mClipFrame.left += offset;
-                        break;
-                    case 1:
-                        mFrame.top += offset;
-                        mClipFrame.top += offset;
-                        break;
-                    case 2:
-                        mFrame.right += offset;
-                        mClipFrame.right += offset;
-                        break;
-                    case 3:
-                        mFrame.bottom += offset;
-                        mClipFrame.bottom += offset;
-                        break;
-                }
-            }
+            // 修改要裁剪的区域 todo ousy
+//            for (int i = 0; i < 4; i++) {
+//                float offset = mWhiteOffset[i];
+//                switch (i) {
+//                    case 0:
+//                        mFrame.left += offset;
+//                        mClipFrame.left += offset;
+//                        break;
+//                    case 1:
+//                        mFrame.top += offset;
+//                        mClipFrame.top += offset;
+//                        break;
+//                    case 2:
+//                        mFrame.right += offset;
+//                        mClipFrame.right += offset;
+//                        break;
+//                    case 3:
+//                        mFrame.bottom += offset;
+//                        mClipFrame.bottom += offset;
+//                        break;
+//                }
+//            }
 
             // 备份裁剪前Clip 区域
             mBackupClipRotate = getRotate();
@@ -514,7 +515,6 @@ public class IMGImage {
                 // 点击位置和涂鸦相交
                 mCheckedDoodleIndex = i;
                 result = true;
-                Log.e("ousyxx", "isTrue-----------");
                 break;
             }
 
@@ -530,9 +530,6 @@ public class IMGImage {
     public void addPath(IMGPath path, float sx, float sy) {
         if (path == null) return;
 
-        if (mInitialScale < 0) {
-            mInitialScale = getScale();
-        }
         float scale = 1f / getScale();
 
         M.setTranslate(sx, sy);
@@ -542,7 +539,7 @@ public class IMGImage {
         M.postTranslate(-mOriginFrame.left, -mOriginFrame.top);
         M.postScale(scale, scale);
         path.transform(M);
-        path.setScaleRate(mInitialScale / getScale());
+        path.setScaleRate(getInitialScale() / getScale());
 
         switch (path.getMode()) {
             case DOODLE:
@@ -703,19 +700,58 @@ public class IMGImage {
         canvas.restoreToCount(layerCount);
     }
 
-    public void onDrawDoodles(Canvas canvas, float sx, float sy) {
+    // 填充白底
+    public void onDrawWhiteRect(Canvas canvas) {
+        float [] whiteOffset = {0f, 0f, 0f, 0f};
         if (!isDoodleEmpty()) {
-            canvas.save();
-
             float scale = getScale();
             Matrix matrix = new Matrix();
             matrix.preTranslate(mOriginFrame.left, mOriginFrame.top);
             matrix.preScale(scale, scale);
 
+            RectF rectF = new RectF(mOriginFrame);
             for (IMGPath path : mDoodles) {
-                path.onDrawWhiteRect(canvas, mOriginFrame, matrix, mWhiteOffset);
+                rectF = path.onDrawWhiteRect(rectF, matrix, whiteOffset);
             }
 
+            Paint paintWhite = new Paint();
+            paintWhite.setColor(Color.WHITE);
+            paintWhite.setStyle(Paint.Style.FILL);
+            canvas.drawRect(rectF, paintWhite);
+        } else {
+            mWhiteOffset = new float[]{0 ,0 ,0 ,0};
+        }
+
+        Log.e("ousyxx", "ss--" + mFrame.left + ";" + mFrame.top + ";" + mFrame.right + ";" + mFrame.bottom);
+        for (int i = 0; i < 4; i++) {
+            float offset = whiteOffset[i];
+            switch (i) {
+                case 0:
+                    mFrame.left = mOriginFrame.left + offset;
+                    mClipFrame.left = mOriginFrame.left + offset;
+                    break;
+                case 1:
+                    mFrame.top = mOriginFrame.top + offset;
+                    mClipFrame.top = mOriginFrame.top + offset;
+                    break;
+                case 2:
+                    mFrame.right = mOriginFrame.right + offset;
+                    mClipFrame.right = mOriginFrame.right + offset;
+                    break;
+                case 3:
+                    mFrame.bottom = mOriginFrame.bottom + offset;
+                    mClipFrame.bottom = mOriginFrame.bottom + offset;
+                    break;
+            }
+        }
+        Log.e("ousyxx", "ee--" + mFrame.left + ";" + mFrame.top + ";" + mFrame.right + ";" + mFrame.bottom);
+    }
+
+    public void onDrawDoodles(Canvas canvas) {
+        if (!isDoodleEmpty()) {
+            canvas.save();
+
+            float scale = getScale();
             canvas.translate(mOriginFrame.left, mOriginFrame.top);
             canvas.scale(scale, scale);
 
@@ -724,8 +760,6 @@ public class IMGImage {
                 path.onDrawDoodle(canvas, mPaint, i == mCheckedDoodleIndex);
             }
             canvas.restore();
-        } else {
-            mWhiteOffset = new float[]{0 ,0 ,0 ,0};
         }
     }
 
@@ -905,13 +939,11 @@ public class IMGImage {
 
     /**
      *
-     * @param scrollX
-     * @param scrollY
      * @param rotate
      * @param isNeedResetBitmap 代表点击完成剪辑
      * @return
      */
-    public boolean onHomingEnd(float scrollX, float scrollY, boolean rotate, boolean isNeedResetBitmap) {
+    public boolean onHomingEnd(boolean rotate, boolean isNeedResetBitmap) {
         isDrawClip = true;
         if (mMode == IMGMode.CLIP) {
             // 开启裁剪模式
@@ -926,27 +958,28 @@ public class IMGImage {
         } else {
             if (isFreezing && !isAnimCanceled) {
                 if (!isNeedResetBitmap) {
-                    for (int i = 0; i < 4; i++) {
-                        float offset = mWhiteOffset[i];
-                        switch (i) {
-                            case 0:
-                                mFrame.left -= offset;
-                                mClipFrame.left -= offset;
-                                break;
-                            case 1:
-                                mFrame.top -= offset;
-                                mClipFrame.top -= offset;
-                                break;
-                            case 2:
-                                mFrame.right -= offset;
-                                mClipFrame.right -= offset;
-                                break;
-                            case 3:
-                                mFrame.bottom -= offset;
-                                mClipFrame.bottom -= offset;
-                                break;
-                        }
-                    }
+                    // todo ousy
+//                    for (int i = 0; i < 4; i++) {
+//                        float offset = mWhiteOffset[i];
+//                        switch (i) {
+//                            case 0:
+//                                mFrame.left -= offset;
+//                                mClipFrame.left -= offset;
+//                                break;
+//                            case 1:
+//                                mFrame.top -= offset;
+//                                mClipFrame.top -= offset;
+//                                break;
+//                            case 2:
+//                                mFrame.right -= offset;
+//                                mClipFrame.right -= offset;
+//                                break;
+//                            case 3:
+//                                mFrame.bottom -= offset;
+//                                mClipFrame.bottom -= offset;
+//                                break;
+//                        }
+//                    }
 
                     if (mViewCallback != null) {
                         mViewCallback.onHoming();

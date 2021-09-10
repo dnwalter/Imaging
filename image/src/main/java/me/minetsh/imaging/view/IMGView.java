@@ -21,6 +21,7 @@ import android.view.ScaleGestureDetector;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
+import android.view.ViewTreeObserver;
 import android.widget.FrameLayout;
 
 import me.minetsh.imaging.core.IMGImage;
@@ -66,6 +67,8 @@ public class IMGView extends FrameLayout implements Runnable, ScaleGestureDetect
     private boolean mIsSecondEdit = false; // 是否进入二次编辑的状态（可以拖动涂鸦）
     private float mSecondEditX; // 二次编辑移动涂鸦的x坐标
     private float mSecondEditY; // 二次编辑移动涂鸦的y坐标
+
+    private boolean mIsNeedHomingAfterDraw = false; // 绘制完后是否要矫正位置
 
     {
         // 涂鸦画刷
@@ -121,11 +124,6 @@ public class IMGView extends FrameLayout implements Runnable, ScaleGestureDetect
         mPointerCount = 0;
         initialize(getContext());
         mImage.resetBitmap(bitmap);
-
-//        IMGUtils.setsTempBitmap(bitmap);
-//        Intent intent = new Intent(getContext(), IMGEditActivity.class);
-//        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-//        ((Activity)getContext()).startActivityForResult(intent, 1);
     }
 
     public void setImageBitmap(Bitmap image) {
@@ -214,6 +212,7 @@ public class IMGView extends FrameLayout implements Runnable, ScaleGestureDetect
 
     public void undoDoodle() {
         mImage.undoDoodle();
+        mIsNeedHomingAfterDraw = true;
         invalidate();
     }
 
@@ -242,6 +241,8 @@ public class IMGView extends FrameLayout implements Runnable, ScaleGestureDetect
         RectF clipFrame = mImage.getClipFrame();
         canvas.rotate(mImage.getRotate(), clipFrame.centerX(), clipFrame.centerY());
 
+        mImage.onDrawWhiteRect(canvas);
+
         // 图片
         mImage.onDrawImage(canvas);
 
@@ -261,7 +262,7 @@ public class IMGView extends FrameLayout implements Runnable, ScaleGestureDetect
         }
 
         // 涂鸦
-        mImage.onDrawDoodles(canvas, getScrollX(), getScrollY());
+        mImage.onDrawDoodles(canvas);
         if (mImage.getMode() == IMGMode.DOODLE && !mPen.isEmpty()) {
             mDoodlePaint.setColor(mPen.getColor());
             mDoodlePaint.setStrokeWidth(IMGPath.BASE_DOODLE_WIDTH * mImage.getInitialScale());
@@ -305,6 +306,14 @@ public class IMGView extends FrameLayout implements Runnable, ScaleGestureDetect
 //            paint.setStrokeWidth(5);
 //            canvas.drawRect(mImage.getRegion(), paint);
 //        }
+
+        // ---- 绘制完后，要处理的逻辑 ----
+        if (mIsNeedHomingAfterDraw) {
+            mIsNeedHomingAfterDraw = false;
+            stopHoming();
+            startHoming(mImage.getStartHoming(getScrollX(), getScrollY()),
+                    mImage.getEndHoming(getScrollX(), getScrollY()));
+        }
     }
 
     public Bitmap saveBitmap() {
@@ -400,6 +409,9 @@ public class IMGView extends FrameLayout implements Runnable, ScaleGestureDetect
                 break;
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL:
+                if (getMode() == IMGMode.DOODLE) {
+                    mIsNeedHomingAfterDraw = true;
+                }
                 postDelayed(this, 1000);
                 break;
         }
@@ -443,7 +455,6 @@ public class IMGView extends FrameLayout implements Runnable, ScaleGestureDetect
         }
 
         if (mIsSecondEdit) {
-            // todo ousy 图片缩放为原来大小
             // 进入二次编辑后，后面缩放等手势全部不执行
             return true;
         }
@@ -496,7 +507,7 @@ public class IMGView extends FrameLayout implements Runnable, ScaleGestureDetect
         return true;
     }
 
-    private boolean onPathMove(MotionEvent event) {
+    private boolean onPathMove(MotionEvent event) { // todo ousy-- 这里处理是否超过5倍长
         if (mPen.isIdentity(event.getPointerId(0))) {
             mPen.lineTo(event.getX(), event.getY());
             invalidate();
@@ -634,7 +645,7 @@ public class IMGView extends FrameLayout implements Runnable, ScaleGestureDetect
         if (DEBUG) {
             Log.d(TAG, "onAnimationEnd");
         }
-        if (mImage.onHomingEnd(getScrollX(), getScrollY(), mHomingAnimator.isRotate(), mIsNeedResetBitmap)) {
+        if (mImage.onHomingEnd(mHomingAnimator.isRotate(), mIsNeedResetBitmap)) {
             toApplyHoming(mImage.clip(getScrollX(), getScrollY()));
         }
 
