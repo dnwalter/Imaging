@@ -459,6 +459,10 @@ public class IMGImage {
         }
     }
 
+    public void resetCheckedDoodleIndex() {
+        mCheckedDoodleIndex = -1;
+    }
+
     // 移动涂鸦
     public void moveDoodle(float dx, float dy) {
         if (mCheckedDoodleIndex >= 0 && mCheckedDoodleIndex < mDoodles.size()) {

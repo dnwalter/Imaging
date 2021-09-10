@@ -134,6 +134,10 @@ public class IMGView extends FrameLayout implements Runnable, ScaleGestureDetect
     }
 
     public void setMode(IMGMode mode) {
+        if (mode != IMGMode.NONE) {
+            mIsSecondEdit = false;
+            mImage.resetCheckedDoodleIndex();
+        }
         // 保存现在的编辑模式
         mPreMode = mImage.getMode();
 
@@ -415,7 +419,7 @@ public class IMGView extends FrameLayout implements Runnable, ScaleGestureDetect
 
         IMGMode mode = mImage.getMode();
 
-        if (mPointerCount == 1 && (mode == IMGMode.NONE)) {
+        if (mPointerCount == 1 && (mode == IMGMode.NONE || mode == IMGMode.DOODLE)) {
             switch (event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
                     mSecondEditX = event.getX();
