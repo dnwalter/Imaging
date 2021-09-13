@@ -409,6 +409,7 @@ public class IMGView extends FrameLayout implements Runnable, ScaleGestureDetect
                 break;
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL:
+                mImage.setNeedShowLimitToast(true);
                 if (getMode() == IMGMode.DOODLE) {
                     mIsNeedHomingAfterDraw = true;
                 }
@@ -432,6 +433,8 @@ public class IMGView extends FrameLayout implements Runnable, ScaleGestureDetect
         IMGMode mode = mImage.getMode();
 
         if (mPointerCount == 1 && (mode == IMGMode.NONE || mode == IMGMode.DOODLE)) {
+            float x = 0;
+            float y = 0;
             switch (event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
                     mSecondEditX = event.getX();
@@ -443,8 +446,8 @@ public class IMGView extends FrameLayout implements Runnable, ScaleGestureDetect
                     break;
                 case MotionEvent.ACTION_MOVE:
                     if (mIsSecondEdit) {
-                        float x = event.getX() - mSecondEditX;
-                        float y = event.getY() - mSecondEditY;
+                        x = event.getX() - mSecondEditX;
+                        y = event.getY() - mSecondEditY;
                         mImage.moveDoodle(x, y);
                         invalidate();
                         mSecondEditX = event.getX();
@@ -507,7 +510,12 @@ public class IMGView extends FrameLayout implements Runnable, ScaleGestureDetect
         return true;
     }
 
-    private boolean onPathMove(MotionEvent event) { // todo ousy-- 这里处理是否超过5倍长
+    private boolean onPathMove(MotionEvent event) {
+        Path path = new Path(mPen.getPath());
+        path.lineTo(event.getX(), event.getY());
+        if (mImage.isLimitExceeded(path)) { // 是否增加的白底超出限制
+            return true;
+        }
         if (mPen.isIdentity(event.getPointerId(0))) {
             mPen.lineTo(event.getX(), event.getY());
             invalidate();

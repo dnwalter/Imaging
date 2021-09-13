@@ -14,7 +14,6 @@ import android.graphics.RectF;
 import android.graphics.Region;
 import android.util.Log;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -144,8 +143,8 @@ public class IMGImage {
     // 是否开始裁剪
     private boolean mIsStartClip = false;
 
-    // 额外增加的白底的四个角，相对于原frame的偏移量
-    private float[] mWhiteOffset = {0, 0, 0, 0}; // todo ousy
+    // 是否要显示超出限制的Toast
+    private boolean mIsNeedShowLimitToast = true;
 
     {
         mShade.setFillType(Path.FillType.WINDING);
@@ -162,7 +161,6 @@ public class IMGImage {
 
     // 重置数据
     public void resetBitmap(Bitmap bitmap) {
-        mWhiteOffset = new float[]{0 ,0 ,0 ,0};
         mIsStartClip = false;
         mFrame = new RectF();
         mOriginFrame = new RectF();
@@ -237,29 +235,6 @@ public class IMGImage {
 
             // 初始化Shade 画刷
             initShadePaint();
-
-            // 修改要裁剪的区域 todo ousy
-//            for (int i = 0; i < 4; i++) {
-//                float offset = mWhiteOffset[i];
-//                switch (i) {
-//                    case 0:
-//                        mFrame.left += offset;
-//                        mClipFrame.left += offset;
-//                        break;
-//                    case 1:
-//                        mFrame.top += offset;
-//                        mClipFrame.top += offset;
-//                        break;
-//                    case 2:
-//                        mFrame.right += offset;
-//                        mClipFrame.right += offset;
-//                        break;
-//                    case 3:
-//                        mFrame.bottom += offset;
-//                        mClipFrame.bottom += offset;
-//                        break;
-//                }
-//            }
 
             // 备份裁剪前Clip 区域
             mBackupClipRotate = getRotate();
@@ -473,6 +448,32 @@ public class IMGImage {
             matrix.preScale(scale, scale);
 
             matrix.postTranslate(dx, dy);
+
+            Path path = new Path(mDoodles.get(mCheckedDoodleIndex).path);
+            path.transform(matrix);
+            if (isLimitExceeded(path)) return;
+
+            matrix.postTranslate(-mOriginFrame.left, -mOriginFrame.top);
+            matrix.postScale(1f / getScale(), 1f / getScale());
+
+            mDoodles.get(mCheckedDoodleIndex).path.transform(matrix);
+        }
+    }
+
+    /**
+     * 修正涂鸦的位置
+     * 假如该涂鸦编辑的时候已超出了限制，不修正偏移的话，会永远判断为超出限制
+     */
+    public void correctDoodleLoc(float dx, float dy) {
+        if (mCheckedDoodleIndex >= 0 && mCheckedDoodleIndex < mDoodles.size()) {
+            dx = dx < 0 ? 1 : -1;
+            dy = dy < 0 ? 1 : -1;
+            float scale = getScale();
+            Matrix matrix = new Matrix();
+            matrix.preTranslate(mOriginFrame.left, mOriginFrame.top);
+            matrix.preScale(scale, scale);
+
+            matrix.postTranslate(dx, dy);
             matrix.postTranslate(-mOriginFrame.left, -mOriginFrame.top);
             matrix.postScale(1f / getScale(), 1f / getScale());
 
@@ -518,8 +519,6 @@ public class IMGImage {
                 break;
             }
 
-            Log.e("ousyxx", "rect:" + bounds.left + ","+ bounds.top + ","+ bounds.right + ","+ bounds.bottom);
-            Log.e("ousyxx", "point:" + x + "," + y);
         }
 
         mCheckedDoodleIndex = i;
@@ -718,11 +717,8 @@ public class IMGImage {
             paintWhite.setColor(Color.WHITE);
             paintWhite.setStyle(Paint.Style.FILL);
             canvas.drawRect(rectF, paintWhite);
-        } else {
-            mWhiteOffset = new float[]{0 ,0 ,0 ,0};
         }
 
-        Log.e("ousyxx", "ss--" + mFrame.left + ";" + mFrame.top + ";" + mFrame.right + ";" + mFrame.bottom);
         for (int i = 0; i < 4; i++) {
             float offset = whiteOffset[i];
             switch (i) {
@@ -744,7 +740,6 @@ public class IMGImage {
                     break;
             }
         }
-        Log.e("ousyxx", "ee--" + mFrame.left + ";" + mFrame.top + ";" + mFrame.right + ";" + mFrame.bottom);
     }
 
     public void onDrawDoodles(Canvas canvas) {
@@ -958,29 +953,6 @@ public class IMGImage {
         } else {
             if (isFreezing && !isAnimCanceled) {
                 if (!isNeedResetBitmap) {
-                    // todo ousy
-//                    for (int i = 0; i < 4; i++) {
-//                        float offset = mWhiteOffset[i];
-//                        switch (i) {
-//                            case 0:
-//                                mFrame.left -= offset;
-//                                mClipFrame.left -= offset;
-//                                break;
-//                            case 1:
-//                                mFrame.top -= offset;
-//                                mClipFrame.top -= offset;
-//                                break;
-//                            case 2:
-//                                mFrame.right -= offset;
-//                                mClipFrame.right -= offset;
-//                                break;
-//                            case 3:
-//                                mFrame.bottom -= offset;
-//                                mClipFrame.bottom -= offset;
-//                                break;
-//                        }
-//                    }
-
                     if (mViewCallback != null) {
                         mViewCallback.onHoming();
                     }
@@ -1012,6 +984,36 @@ public class IMGImage {
         if (mImage != null && !mImage.isRecycled()) {
             mImage.recycle();
         }
+    }
+
+    public void setNeedShowLimitToast(boolean needShowLimitToast) {
+        mIsNeedShowLimitToast = needShowLimitToast;
+    }
+
+    /**
+     * 是否超过最大限制
+     * 需求是增加的白底加图片的总宽高，不能超过图片宽高的5倍
+     * @param path
+     */
+    public boolean isLimitExceeded(Path path) {
+        RectF bounds = new RectF();
+        path.computeBounds(bounds, true);
+        float left = bounds.left < mFrame.left ? bounds.left : mFrame.left;
+        float top = bounds.top < mFrame.top ? bounds.top : mFrame.top;
+        float right = bounds.right > mFrame.right ? bounds.right : mFrame.right;
+        float bottom = bounds.bottom > mFrame.bottom ? bounds.bottom : mFrame.bottom;
+        float width = right - left;
+        float height = bottom - top;
+        if (!(width >= mOriginFrame.width() && width <= mOriginFrame.width() * 5) // todo ousy-- 5倍
+                || !(height >= mOriginFrame.height() && height <= mOriginFrame.height() * 5)) {
+            if (mIsNeedShowLimitToast) {
+                mIsNeedShowLimitToast = false;
+                Log.e("ousyyy", "图片尺寸超出限制");
+            }
+            return true;
+        }
+
+        return false;
     }
 
     @Override
