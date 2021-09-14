@@ -623,6 +623,7 @@ public class IMGView extends FrameLayout implements Runnable, ScaleGestureDetect
     public <V extends View & IMGSticker> boolean onRemove(V stickerView) {
         if (mImage != null) {
             mImage.onRemoveSticker(stickerView);
+            mIsNeedHomingAfterDraw = true;
         }
         stickerView.unregisterCallback(this);
         ViewParent parent = stickerView.getParent();

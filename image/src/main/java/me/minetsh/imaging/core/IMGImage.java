@@ -13,6 +13,7 @@ import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Region;
 import android.util.Log;
+import android.view.View;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,6 +25,7 @@ import me.minetsh.imaging.core.homing.IMGHoming;
 import me.minetsh.imaging.core.interfaces.IIMGViewCallback;
 import me.minetsh.imaging.core.sticker.IMGSticker;
 import me.minetsh.imaging.core.util.IMGUtils;
+import me.minetsh.imaging.view.IMGStickerView;
 
 /**
  * Created by felix on 2017/11/21 下午10:03.
@@ -41,6 +43,8 @@ public class IMGImage {
     private RectF mOriginFrame = new RectF();
     // 包括自己填充白底的图片边框
     private RectF mFrame = new RectF();
+    // 记录移动涂鸦前的边框，用于判断新移动的涂鸦是否移出边界
+    private RectF mTempFrame = new RectF();
 
     /**
      * 裁剪图片边框（显示的图片区域）
@@ -449,7 +453,15 @@ public class IMGImage {
                 RectF bounds = new RectF();
                 path.computeBounds(bounds, true);
 
-                result = bounds.left <= mWindow.left || bounds.top <= mWindow.top || bounds.right >= mWindow.right || bounds.bottom >= mWindow.bottom;
+//                Matrix matrixTemp = new Matrix();
+//                matrixTemp.postTranslate(-mOriginFrame.left, -mOriginFrame.top);
+//                matrixTemp.mapRect(mTempFrame);
+
+                boolean left = bounds.left <= Math.min(mWindow.left, mTempFrame.left);
+                boolean top = bounds.top <= Math.min(mWindow.top, mTempFrame.top);
+                boolean right = bounds.right >= Math.max(mWindow.right, mTempFrame.right);
+                boolean bottom = bounds.bottom >= Math.max(mWindow.bottom, mTempFrame.bottom);
+                result = left || top || right || bottom;
             }
         }
 
@@ -521,6 +533,7 @@ public class IMGImage {
         }
 
         mCheckedDoodleIndex = i;
+        mTempFrame = new RectF(mFrame);
 
         return result;
     }
@@ -600,12 +613,12 @@ public class IMGImage {
     public void onRemoveSticker(IMGSticker sticker) {
         if (mForeSticker == sticker) {
             mForeSticker = null;
-        } else {
-            for (IMGModel model : mGraffitis) {
-                if (model.equalsSticker(sticker)) {
-                    mGraffitis.remove(model);
-                    break;
-                }
+        }
+
+        for (IMGModel model : mGraffitis) {
+            if (model.equalsSticker(sticker)) {
+                mGraffitis.remove(model);
+                break;
             }
         }
     }
@@ -720,8 +733,16 @@ public class IMGImage {
         RectF rectF = new RectF(mOriginFrame);
         for (IMGModel model : mGraffitis) {
             IMGPath path = model.getImgPath();
-            if (path == null) continue;
-            rectF = path.onDrawWhiteRect(rectF, matrix, whiteOffset);
+            IMGSticker sticker = model.getSticker();
+
+            if (path != null) {
+                rectF = path.onDrawWhiteRect(rectF, matrix, whiteOffset);
+            }
+
+            if (sticker != null) {
+                RectF sRect = model.getSticker().getFrame();
+                rectF = sticker.onDrawWhiteRect(rectF, whiteOffset);
+            }
         }
 
         Paint paintWhite = new Paint();
@@ -731,9 +752,6 @@ public class IMGImage {
 
         for (int i = 0; i < 4; i++) {
             float offset = whiteOffset[i];
-            if (offset != 0) {
-                resetCenterXY();
-            }
             switch (i) {
                 case 0:
                     mFrame.left = mOriginFrame.left + offset;
@@ -897,11 +915,17 @@ public class IMGImage {
 
     // 缩放图片，让整个屏幕能显示全
     public void resetScaleToShowAll() {
+        Log.e("ousyyy", "isOutSide");
         float scale = Math.min(
                 mWindow.width() / mClipFrame.width(),
                 mWindow.height() / mClipFrame.height()
         );
-        setScale(scale * getScale());
+
+        M.setScale(scale, scale, mClipFrame.centerX(), mClipFrame.centerY());
+        M.postTranslate(mWindow.centerX() - mClipFrame.centerX(), mWindow.centerY() - mClipFrame.centerY());
+        M.mapRect(mFrame);
+        M.mapRect(mOriginFrame);
+        M.mapRect(mClipFrame);
     }
 
     public void setScale(float scale) {

@@ -1,5 +1,7 @@
 package me.minetsh.imaging.core.sticker;
 
+import android.graphics.RectF;
+
 import me.minetsh.imaging.core.IMGViewPortrait;
 
 /**
@@ -7,5 +9,5 @@ import me.minetsh.imaging.core.IMGViewPortrait;
  */
 
 public interface IMGSticker extends IMGStickerPortrait, IMGViewPortrait {
-
+    RectF onDrawWhiteRect(RectF frame, float[] whiteOffset);
 }

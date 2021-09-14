@@ -7,6 +7,7 @@ import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.RectF;
+import android.os.Build;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
@@ -14,6 +15,7 @@ import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 
+import androidx.annotation.RequiresApi;
 import me.minetsh.imaging.R;
 import me.minetsh.imaging.core.sticker.IMGSticker;
 import me.minetsh.imaging.core.sticker.IMGStickerAdjustHelper;
@@ -33,7 +35,7 @@ public abstract class IMGStickerView extends ViewGroup implements IMGSticker, Vi
     // 最小缩放限制
     private static final float MIN_SCALE = 0.3f;
 
-    private View mContentView;
+    protected View mContentView;
 
     private float mScale = 1f;
 
@@ -66,7 +68,7 @@ public abstract class IMGStickerView extends ViewGroup implements IMGSticker, Vi
 
     {
         PAINT = new Paint(Paint.ANTI_ALIAS_FLAG);
-        PAINT.setColor(Color.WHITE);
+        PAINT.setColor(Color.BLUE);
         PAINT.setStyle(Paint.Style.STROKE);
         PAINT.setStrokeWidth(STROKE_WIDTH);
     }
@@ -294,6 +296,31 @@ public abstract class IMGStickerView extends ViewGroup implements IMGSticker, Vi
     public void onSticker(Canvas canvas) {
         canvas.translate(mContentView.getX(), mContentView.getY());
         mContentView.draw(canvas);
+    }
+
+    @Override
+    public RectF onDrawWhiteRect(RectF frame, float[] whiteOffset) {
+        RectF bounds = new RectF(getFrame().left + ANCHOR_SIZE_HALF, getFrame().top + ANCHOR_SIZE_HALF, getFrame().right - ANCHOR_SIZE_HALF, getFrame().bottom - ANCHOR_SIZE_HALF);
+
+        RectF rect = new RectF(frame);
+        if (bounds.left < frame.left) {
+            whiteOffset[0] += (bounds.left - frame.left);
+            rect.left = bounds.left;
+        }
+        if (bounds.right > frame.right) {
+            whiteOffset[2] += (bounds.right - frame.right);
+            rect.right = bounds.right;
+        }
+        if (bounds.top < frame.top) {
+            whiteOffset[1] += (bounds.top - frame.top);
+            rect.top = bounds.top;
+        }
+        if (bounds.bottom > frame.bottom) {
+            whiteOffset[3] += (bounds.bottom - frame.bottom);
+            rect.bottom = bounds.bottom;
+        }
+
+        return rect;
     }
 
     @Override
