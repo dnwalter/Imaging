@@ -19,6 +19,7 @@ import java.util.List;
 
 import me.minetsh.imaging.core.clip.IMGClip;
 import me.minetsh.imaging.core.clip.IMGClipWindow;
+import me.minetsh.imaging.core.entity.IMGModel;
 import me.minetsh.imaging.core.homing.IMGHoming;
 import me.minetsh.imaging.core.interfaces.IIMGViewCallback;
 import me.minetsh.imaging.core.sticker.IMGSticker;
@@ -100,14 +101,9 @@ public class IMGImage {
     private IMGSticker mForeSticker;
 
     /**
-     * 为被选中贴片
+     * 所有的涂鸦包括画图和文本
      */
-    private List<IMGSticker> mBackStickers = new ArrayList<>();
-
-    /**
-     * 涂鸦路径
-     */
-    private List<IMGPath> mDoodles = new ArrayList<>();
+    private List<IMGModel> mGraffitis = new ArrayList<>();
     // 被点击选中的涂鸦的下标
     private int mCheckedDoodleIndex = -1;
 
@@ -172,8 +168,7 @@ public class IMGImage {
         mTargetRotate = 0;
         mClipWin = new IMGClipWindow();
         mForeSticker = null;
-        mBackStickers = new ArrayList<>();
-        mDoodles = new ArrayList<>();
+        mGraffitis = new ArrayList<>();
         mMosaics = new ArrayList<>();
         M = new Matrix();
 
@@ -257,14 +252,16 @@ public class IMGImage {
         }
     }
 
-    // TODO
     private void rotateStickers(float rotate) {
         M.setRotate(rotate, mClipFrame.centerX(), mClipFrame.centerY());
-        for (IMGSticker sticker : mBackStickers) {
-            M.mapRect(sticker.getFrame());
-            sticker.setRotation(sticker.getRotation() + rotate);
-            sticker.setX(sticker.getFrame().centerX() - sticker.getPivotX());
-            sticker.setY(sticker.getFrame().centerY() - sticker.getPivotY());
+        for (IMGModel model : mGraffitis) {
+            IMGSticker sticker = model.getSticker();
+            if (sticker != null) {
+                M.mapRect(sticker.getFrame());
+                sticker.setRotation(sticker.getRotation() + rotate);
+                sticker.setX(sticker.getFrame().centerX() - sticker.getPivotX());
+                sticker.setY(sticker.getFrame().centerY() - sticker.getPivotY());
+            }
         }
     }
 
@@ -280,13 +277,10 @@ public class IMGImage {
         return mMosaics.isEmpty();
     }
 
-    public boolean isDoodleEmpty() {
-        return mDoodles.isEmpty();
-    }
-
-    public void undoDoodle() {
-        if (!mDoodles.isEmpty()) {
-            mDoodles.remove(mDoodles.size() - 1);
+    // 撤销涂鸦
+    public void undoGraffiti() {
+        if (!mGraffitis.isEmpty()) {
+            mGraffitis.remove(mGraffitis.size() - 1);
         }
     }
 
@@ -442,18 +436,21 @@ public class IMGImage {
     // 是否超出了屏幕
     public boolean isOutSideWindow() {
         boolean result = false;
-        if (mCheckedDoodleIndex >= 0 && mCheckedDoodleIndex < mDoodles.size()) {
-            float scale = getScale();
-            Matrix matrix = new Matrix();
-            matrix.preTranslate(mOriginFrame.left, mOriginFrame.top);
-            matrix.preScale(scale, scale);
+        if (mCheckedDoodleIndex >= 0 && mCheckedDoodleIndex < mGraffitis.size()) {
+            IMGPath imgPath = mGraffitis.get(mCheckedDoodleIndex).getImgPath();
+            if (imgPath != null) {
+                float scale = getScale();
+                Matrix matrix = new Matrix();
+                matrix.preTranslate(mOriginFrame.left, mOriginFrame.top);
+                matrix.preScale(scale, scale);
 
-            Path path = new Path(mDoodles.get(mCheckedDoodleIndex).path);
-            path.transform(matrix);
-            RectF bounds = new RectF();
-            path.computeBounds(bounds, true);
+                Path path = new Path(imgPath.path);
+                path.transform(matrix);
+                RectF bounds = new RectF();
+                path.computeBounds(bounds, true);
 
-            result = bounds.left <= mWindow.left || bounds.top <= mWindow.top || bounds.right >= mWindow.right || bounds.bottom >= mWindow.bottom;
+                result = bounds.left <= mWindow.left || bounds.top <= mWindow.top || bounds.right >= mWindow.right || bounds.bottom >= mWindow.bottom;
+            }
         }
 
         return result;
@@ -461,22 +458,25 @@ public class IMGImage {
 
     // 移动涂鸦
     public void moveDoodle(float dx, float dy) {
-        if (mCheckedDoodleIndex >= 0 && mCheckedDoodleIndex < mDoodles.size()) {
-            float scale = getScale();
-            Matrix matrix = new Matrix();
-            matrix.preTranslate(mOriginFrame.left, mOriginFrame.top);
-            matrix.preScale(scale, scale);
+        if (mCheckedDoodleIndex >= 0 && mCheckedDoodleIndex < mGraffitis.size()) {
+            IMGPath imgPath = mGraffitis.get(mCheckedDoodleIndex).getImgPath();
+            if (imgPath != null) {
+                float scale = getScale();
+                Matrix matrix = new Matrix();
+                matrix.preTranslate(mOriginFrame.left, mOriginFrame.top);
+                matrix.preScale(scale, scale);
 
-            matrix.postTranslate(dx, dy);
+                matrix.postTranslate(dx, dy);
 
-            Path path = new Path(mDoodles.get(mCheckedDoodleIndex).path);
-            path.transform(matrix);
-            if (isLimitExceeded(path)) return;
+                Path path = new Path(imgPath.path);
+                path.transform(matrix);
+                if (isLimitExceeded(path)) return;
 
-            matrix.postTranslate(-mOriginFrame.left, -mOriginFrame.top);
-            matrix.postScale(1f / getScale(), 1f / getScale());
+                matrix.postTranslate(-mOriginFrame.left, -mOriginFrame.top);
+                matrix.postScale(1f / getScale(), 1f / getScale());
 
-            mDoodles.get(mCheckedDoodleIndex).path.transform(matrix);
+                imgPath.path.transform(matrix);
+            }
         }
     }
 
@@ -492,9 +492,10 @@ public class IMGImage {
         Matrix matrix = new Matrix();
         matrix.preTranslate(mOriginFrame.left, mOriginFrame.top);
         matrix.preScale(scale, scale);
-        int i = mDoodles.size() - 1;
+        int i = mGraffitis.size() - 1;
         for(; i >= 0; i--) {
-            IMGPath imgPath = mDoodles.get(i);
+            IMGPath imgPath = mGraffitis.get(i).getImgPath();
+            if (imgPath == null) continue;
             RectF bounds = new RectF();
             Path path = new Path(imgPath.getPath());
             path.transform(matrix);
@@ -513,7 +514,6 @@ public class IMGImage {
 
             if (!regionPoint.isEmpty()) {
                 // 点击位置和涂鸦相交
-                mCheckedDoodleIndex = i;
                 result = true;
                 break;
             }
@@ -541,7 +541,7 @@ public class IMGImage {
 
         switch (path.getMode()) {
             case DOODLE:
-                mDoodles.add(path);
+                mGraffitis.add(new IMGModel(path));
                 break;
             case MOSAIC:
                 path.setWidth(path.getWidth() * scale);
@@ -557,8 +557,6 @@ public class IMGImage {
 
         if (sticker.isShowing()) {
             mForeSticker = sticker;
-            // 从BackStickers中移除
-            mBackStickers.remove(sticker);
         } else sticker.show();
     }
 
@@ -567,8 +565,16 @@ public class IMGImage {
 
         if (!sticker.isShowing()) {
             // 加入BackStickers中
-            if (!mBackStickers.contains(sticker)) {
-                mBackStickers.add(sticker);
+            boolean isExists = false;
+            for (IMGModel model : mGraffitis) {
+                if (model.equalsSticker(sticker)) {
+                    isExists = true;
+                    break;
+                }
+            }
+
+            if (!isExists) {
+                mGraffitis.add(new IMGModel(sticker));
             }
 
             if (mForeSticker == sticker) {
@@ -595,7 +601,12 @@ public class IMGImage {
         if (mForeSticker == sticker) {
             mForeSticker = null;
         } else {
-            mBackStickers.remove(sticker);
+            for (IMGModel model : mGraffitis) {
+                if (model.equalsSticker(sticker)) {
+                    mGraffitis.remove(model);
+                    break;
+                }
+            }
         }
     }
 
@@ -701,22 +712,22 @@ public class IMGImage {
     // 填充白底
     public void onDrawWhiteRect(Canvas canvas) {
         float [] whiteOffset = {0f, 0f, 0f, 0f};
-        if (!isDoodleEmpty()) {
-            float scale = getScale();
-            Matrix matrix = new Matrix();
-            matrix.preTranslate(mOriginFrame.left, mOriginFrame.top);
-            matrix.preScale(scale, scale);
+        float scale = getScale();
+        Matrix matrix = new Matrix();
+        matrix.preTranslate(mOriginFrame.left, mOriginFrame.top);
+        matrix.preScale(scale, scale);
 
-            RectF rectF = new RectF(mOriginFrame);
-            for (IMGPath path : mDoodles) {
-                rectF = path.onDrawWhiteRect(rectF, matrix, whiteOffset);
-            }
-
-            Paint paintWhite = new Paint();
-            paintWhite.setColor(Color.WHITE);
-            paintWhite.setStyle(Paint.Style.FILL);
-            canvas.drawRect(rectF, paintWhite);
+        RectF rectF = new RectF(mOriginFrame);
+        for (IMGModel model : mGraffitis) {
+            IMGPath path = model.getImgPath();
+            if (path == null) continue;
+            rectF = path.onDrawWhiteRect(rectF, matrix, whiteOffset);
         }
+
+        Paint paintWhite = new Paint();
+        paintWhite.setColor(Color.WHITE);
+        paintWhite.setStyle(Paint.Style.FILL);
+        canvas.drawRect(rectF, paintWhite);
 
         for (int i = 0; i < 4; i++) {
             float offset = whiteOffset[i];
@@ -744,20 +755,24 @@ public class IMGImage {
         }
     }
 
-    public void onDrawDoodles(Canvas canvas) {
-        if (!isDoodleEmpty()) {
-            canvas.save();
-
-            float scale = getScale();
-            canvas.translate(mOriginFrame.left, mOriginFrame.top);
-            canvas.scale(scale, scale);
-
-            for (int i = 0; i < mDoodles.size(); i++) {
-                IMGPath path = mDoodles.get(i);
-                path.onDrawDoodle(canvas, mPaint, i == mCheckedDoodleIndex);
-            }
-            canvas.restore();
+    // 画涂鸦（包括文本）
+    public void onDrawGraffiti(Canvas canvas) {
+        for (int i = 0; i < mGraffitis.size(); i++) {
+            IMGPath path = mGraffitis.get(i).getImgPath();
+            IMGSticker sticker = mGraffitis.get(i).getSticker();
+            if (path != null) onDrawDoodles(canvas, path, i);
+            if (sticker != null) onDrawStickers(canvas, sticker);
         }
+    }
+
+    private void onDrawDoodles(Canvas canvas, IMGPath path, int index) {
+        canvas.save();
+        float scale = getScale();
+        canvas.translate(mOriginFrame.left, mOriginFrame.top);
+        canvas.scale(scale, scale);
+
+        path.onDrawDoodle(canvas, mPaint, index == mCheckedDoodleIndex);
+        canvas.restore();
     }
 
     public void onDrawStickerClip(Canvas canvas) {
@@ -766,25 +781,20 @@ public class IMGImage {
         canvas.clipRect(mTempClipFrame);
     }
 
-    public void onDrawStickers(Canvas canvas) {
-        if (mBackStickers.isEmpty()) return;
-        canvas.save();
-        for (IMGSticker sticker : mBackStickers) {
-            if (!sticker.isShowing()) {
-                float tPivotX = sticker.getX() + sticker.getPivotX();
-                float tPivotY = sticker.getY() + sticker.getPivotY();
+    private void onDrawStickers(Canvas canvas, IMGSticker sticker) {
+        if (!sticker.isShowing()) {
+            float tPivotX = sticker.getX() + sticker.getPivotX();
+            float tPivotY = sticker.getY() + sticker.getPivotY();
 
-                canvas.save();
-                M.setTranslate(sticker.getX(), sticker.getY());
-                M.postScale(sticker.getScale(), sticker.getScale(), tPivotX, tPivotY);
-                M.postRotate(sticker.getRotation(), tPivotX, tPivotY);
+            canvas.save();
+            M.setTranslate(sticker.getX(), sticker.getY());
+            M.postScale(sticker.getScale(), sticker.getScale(), tPivotX, tPivotY);
+            M.postRotate(sticker.getRotation(), tPivotX, tPivotY);
 
-                canvas.concat(M);
-                sticker.onSticker(canvas);
-                canvas.restore();
-            }
+            canvas.concat(M);
+            sticker.onSticker(canvas);
+            canvas.restore();
         }
-        canvas.restore();
     }
 
     public void onDrawShade(Canvas canvas) {
@@ -921,7 +931,9 @@ public class IMGImage {
         M.mapRect(mOriginFrame); // todo ousy
         M.mapRect(mClipFrame);
 
-        for (IMGSticker sticker : mBackStickers) {
+        for (IMGModel model : mGraffitis) {
+            IMGSticker sticker = model.getSticker();
+            if (sticker == null) continue;
             M.mapRect(sticker.getFrame());
             float tPivotX = sticker.getX() + sticker.getPivotX();
             float tPivotY = sticker.getY() + sticker.getPivotY();

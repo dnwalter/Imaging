@@ -206,12 +206,8 @@ public class IMGView extends FrameLayout implements Runnable, ScaleGestureDetect
         mPen.setColor(color);
     }
 
-    public boolean isDoodleEmpty() {
-        return mImage.isDoodleEmpty();
-    }
-
     public void undoDoodle() {
-        mImage.undoDoodle();
+        mImage.undoGraffiti();
         mIsNeedHomingAfterDraw = true;
         invalidate();
     }
@@ -241,6 +237,7 @@ public class IMGView extends FrameLayout implements Runnable, ScaleGestureDetect
         RectF clipFrame = mImage.getClipFrame();
         canvas.rotate(mImage.getRotate(), clipFrame.centerX(), clipFrame.centerY());
 
+        // 画填充的白底
         mImage.onDrawWhiteRect(canvas);
 
         // 图片
@@ -261,8 +258,12 @@ public class IMGView extends FrameLayout implements Runnable, ScaleGestureDetect
             mImage.onDrawMosaic(canvas, count);
         }
 
+        mImage.onDrawShade(canvas);
+
+        canvas.restore();
+
         // 涂鸦
-        mImage.onDrawDoodles(canvas);
+        mImage.onDrawGraffiti(canvas);
         if (mImage.getMode() == IMGMode.DOODLE && !mPen.isEmpty()) {
             mDoodlePaint.setColor(mPen.getColor());
             mDoodlePaint.setStrokeWidth(IMGPath.BASE_DOODLE_WIDTH);
@@ -272,23 +273,6 @@ public class IMGView extends FrameLayout implements Runnable, ScaleGestureDetect
             canvas.translate(getScrollX(), getScrollY());
             canvas.drawPath(mPen.getPath(), mDoodlePaint);
             canvas.restore();
-        }
-
-        // TODO
-        if (mImage.isFreezing()) {
-            // 文字贴片
-            mImage.onDrawStickers(canvas);
-        }
-
-        mImage.onDrawShade(canvas);
-
-        canvas.restore();
-
-        // TODO
-        if (!mImage.isFreezing()) {
-            // 文字贴片
-            mImage.onDrawStickerClip(canvas);
-            mImage.onDrawStickers(canvas);
         }
 
         // 裁剪

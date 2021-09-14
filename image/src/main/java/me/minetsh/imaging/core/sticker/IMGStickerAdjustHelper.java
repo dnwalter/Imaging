@@ -76,12 +76,12 @@ public class IMGStickerAdjustHelper implements View.OnTouchListener {
 
                 float scale = (float) (radius / mRadius);
 
-
                 mContainer.addScale(scale);
 
                 Log.d(TAG, "    D   = " + (degrees - mDegrees));
 
-                mContainer.setRotation((float) (mContainer.getRotation() + degrees - mDegrees));
+                // TODO 禁止旋转功能
+//                mContainer.setRotation((float) (mContainer.getRotation() + degrees - mDegrees));
 
                 mRadius = radius;
 

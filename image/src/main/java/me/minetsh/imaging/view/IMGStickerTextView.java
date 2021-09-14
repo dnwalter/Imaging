@@ -23,7 +23,7 @@ public class IMGStickerTextView extends IMGStickerView implements IMGTextEditDia
 
     private IMGTextEditDialog mDialog;
 
-    private static float mBaseTextSize = -1f;
+    private static float mBaseTextSize = 24f;
 
     private static final int PADDING = 26;
 
@@ -43,17 +43,17 @@ public class IMGStickerTextView extends IMGStickerView implements IMGTextEditDia
 
     @Override
     public void onInitialize(Context context) {
-        if (mBaseTextSize <= 0) {
-            mBaseTextSize = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP,
-                    TEXT_SIZE_SP, context.getResources().getDisplayMetrics());
-        }
+//        if (mBaseTextSize <= 0) {
+//            mBaseTextSize = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP,
+//                    TEXT_SIZE_SP, context.getResources().getDisplayMetrics());
+//        }
         super.onInitialize(context);
     }
 
     @Override
     public View onCreateContentView(Context context) {
         mTextView = new TextView(context);
-        mTextView.setTextSize(mBaseTextSize);
+        mTextView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, mBaseTextSize);
         mTextView.setPadding(PADDING, PADDING, PADDING, PADDING);
         mTextView.setTextColor(Color.WHITE);
 

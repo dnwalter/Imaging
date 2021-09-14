@@ -28,6 +28,11 @@ public abstract class IMGStickerView extends ViewGroup implements IMGSticker, Vi
 
     private static final String TAG = "IMGStickerView";
 
+    // 最大缩放限制
+    private static final float MAX_SCALE = 3f;
+    // 最小缩放限制
+    private static final float MIN_SCALE = 0.3f;
+
     private View mContentView;
 
     private float mScale = 1f;
@@ -132,7 +137,10 @@ public abstract class IMGStickerView extends ViewGroup implements IMGSticker, Vi
 
     @Override
     public void addScale(float scale) {
-        setScale(getScale() * scale);
+        float result = getScale() * scale;
+        result = Math.max(result, MIN_SCALE);
+        result = Math.min(result, MAX_SCALE);
+        setScale(result);
     }
 
     private LayoutParams getContentLayoutParams() {
