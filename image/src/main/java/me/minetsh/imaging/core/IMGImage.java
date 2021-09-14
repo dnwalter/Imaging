@@ -439,6 +439,26 @@ public class IMGImage {
         mCheckedDoodleIndex = -1;
     }
 
+    // 是否超出了屏幕
+    public boolean isOutSideWindow() {
+        boolean result = false;
+        if (mCheckedDoodleIndex >= 0 && mCheckedDoodleIndex < mDoodles.size()) {
+            float scale = getScale();
+            Matrix matrix = new Matrix();
+            matrix.preTranslate(mOriginFrame.left, mOriginFrame.top);
+            matrix.preScale(scale, scale);
+
+            Path path = new Path(mDoodles.get(mCheckedDoodleIndex).path);
+            path.transform(matrix);
+            RectF bounds = new RectF();
+            path.computeBounds(bounds, true);
+
+            result = bounds.left <= mWindow.left || bounds.top <= mWindow.top || bounds.right >= mWindow.right || bounds.bottom >= mWindow.bottom;
+        }
+
+        return result;
+    }
+
     // 移动涂鸦
     public void moveDoodle(float dx, float dy) {
         if (mCheckedDoodleIndex >= 0 && mCheckedDoodleIndex < mDoodles.size()) {
@@ -453,27 +473,6 @@ public class IMGImage {
             path.transform(matrix);
             if (isLimitExceeded(path)) return;
 
-            matrix.postTranslate(-mOriginFrame.left, -mOriginFrame.top);
-            matrix.postScale(1f / getScale(), 1f / getScale());
-
-            mDoodles.get(mCheckedDoodleIndex).path.transform(matrix);
-        }
-    }
-
-    /**
-     * 修正涂鸦的位置
-     * 假如该涂鸦编辑的时候已超出了限制，不修正偏移的话，会永远判断为超出限制
-     */
-    public void correctDoodleLoc(float dx, float dy) {
-        if (mCheckedDoodleIndex >= 0 && mCheckedDoodleIndex < mDoodles.size()) {
-            dx = dx < 0 ? 1 : -1;
-            dy = dy < 0 ? 1 : -1;
-            float scale = getScale();
-            Matrix matrix = new Matrix();
-            matrix.preTranslate(mOriginFrame.left, mOriginFrame.top);
-            matrix.preScale(scale, scale);
-
-            matrix.postTranslate(dx, dy);
             matrix.postTranslate(-mOriginFrame.left, -mOriginFrame.top);
             matrix.postScale(1f / getScale(), 1f / getScale());
 
@@ -538,7 +537,7 @@ public class IMGImage {
         M.postTranslate(-mOriginFrame.left, -mOriginFrame.top);
         M.postScale(scale, scale);
         path.transform(M);
-        path.setScaleRate(getInitialScale() / getScale());
+        path.setScaleRate(1 / getScale());
 
         switch (path.getMode()) {
             case DOODLE:
@@ -721,6 +720,9 @@ public class IMGImage {
 
         for (int i = 0; i < 4; i++) {
             float offset = whiteOffset[i];
+            if (offset != 0) {
+                resetCenterXY();
+            }
             switch (i) {
                 case 0:
                     mFrame.left = mOriginFrame.left + offset;
@@ -883,6 +885,15 @@ public class IMGImage {
         return mInitialScale;
     }
 
+    // 缩放图片，让整个屏幕能显示全
+    public void resetScaleToShowAll() {
+        float scale = Math.min(
+                mWindow.width() / mClipFrame.width(),
+                mWindow.height() / mClipFrame.height()
+        );
+        setScale(scale * getScale());
+    }
+
     public void setScale(float scale) {
         setScale(scale, mClipFrame.centerX(), mClipFrame.centerY());
     }
@@ -1004,7 +1015,7 @@ public class IMGImage {
         float bottom = bounds.bottom > mFrame.bottom ? bounds.bottom : mFrame.bottom;
         float width = right - left;
         float height = bottom - top;
-        if (!(width >= mOriginFrame.width() && width <= mOriginFrame.width() * 5) // todo ousy-- 5倍
+        if (!(width >= mOriginFrame.width() && width <= mOriginFrame.width() * 5)
                 || !(height >= mOriginFrame.height() && height <= mOriginFrame.height() * 5)) {
             if (mIsNeedShowLimitToast) {
                 mIsNeedShowLimitToast = false;
