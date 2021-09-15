@@ -35,6 +35,7 @@ public class IMGStickerAdjustHelper implements View.OnTouchListener {
     public boolean onTouch(View v, MotionEvent event) {
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
+                mContainer.onIconTouchDown();
 
                 float x = event.getX();
 
@@ -85,7 +86,14 @@ public class IMGStickerAdjustHelper implements View.OnTouchListener {
 
                 mRadius = radius;
 
+                mContainer.onIconTouchMove();
+
                 return true;
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                mContainer.onIconTouchUp();
+                return true;
+
         }
         return false;
     }

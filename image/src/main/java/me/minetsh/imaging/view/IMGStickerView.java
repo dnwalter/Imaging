@@ -9,6 +9,7 @@ import android.graphics.Rect;
 import android.graphics.RectF;
 import android.os.Build;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
@@ -31,9 +32,9 @@ public abstract class IMGStickerView extends ViewGroup implements IMGSticker, Vi
     private static final String TAG = "IMGStickerView";
 
     // 最大缩放限制
-    private static final float MAX_SCALE = 3f;
+    private static final float MAX_SCALE = 2f;
     // 最小缩放限制
-    private static final float MIN_SCALE = 0.3f;
+    private static final float MIN_SCALE = 0.5f;
 
     protected View mContentView;
 
@@ -263,6 +264,18 @@ public abstract class IMGStickerView extends ViewGroup implements IMGSticker, Vi
         if (v == mRemoveView) {
             onRemove();
         }
+    }
+
+    public void onIconTouchDown() {
+        mStickerHelper.onTouchDown();
+    }
+
+    public void onIconTouchMove() {
+        mStickerHelper.setFrame(null);
+    }
+
+    public void onIconTouchUp() {
+        mStickerHelper.touchUp();
     }
 
     public void onRemove() {

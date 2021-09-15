@@ -62,6 +62,10 @@ public class IMGStickerHelper<StickerView extends View & IMGSticker> implements
         return isShowing;
     }
 
+    public void setFrame(RectF frame) {
+        mFrame = frame;
+    }
+
     @Override
     public RectF getFrame() {
         if (mFrame == null) {

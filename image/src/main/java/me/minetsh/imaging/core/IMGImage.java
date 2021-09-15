@@ -928,6 +928,8 @@ public class IMGImage {
                 mWindow.height() / mClipFrame.height()
         );
 
+        float factor  = scale / getScale();
+
         M.setScale(scale, scale, mClipFrame.centerX(), mClipFrame.centerY());
         M.postTranslate(mWindow.centerX() - mClipFrame.centerX(), mWindow.centerY() - mClipFrame.centerY());
         M.mapRect(mFrame);
@@ -940,7 +942,7 @@ public class IMGImage {
             M.mapRect(sticker.getFrame());
             float tPivotX = sticker.getX() + sticker.getPivotX();
             float tPivotY = sticker.getY() + sticker.getPivotY();
-            sticker.setScale(scale);
+            sticker.addScale(factor);
             sticker.setX(sticker.getX() + sticker.getFrame().centerX() - tPivotX);
             sticker.setY(sticker.getY() + sticker.getFrame().centerY() - tPivotY);
         }
