@@ -163,6 +163,7 @@ public class IMGImage {
     public void resetBitmap(Bitmap bitmap) {
         mIsStartClip = false;
         mFrame = new RectF();
+        mTempFrame = new RectF();
         mOriginFrame = new RectF();
         mClipFrame = new RectF();
         mTempClipFrame = new RectF();
@@ -429,6 +430,7 @@ public class IMGImage {
 
     public <S extends IMGSticker> void addSticker(S sticker) {
         if (sticker != null) {
+            mGraffitis.add(new IMGModel(sticker));
             moveToForeground(sticker);
         }
     }
@@ -453,16 +455,28 @@ public class IMGImage {
                 RectF bounds = new RectF();
                 path.computeBounds(bounds, true);
 
-//                Matrix matrixTemp = new Matrix();
-//                matrixTemp.postTranslate(-mOriginFrame.left, -mOriginFrame.top);
-//                matrixTemp.mapRect(mTempFrame);
-
                 boolean left = bounds.left <= Math.min(mWindow.left, mTempFrame.left);
                 boolean top = bounds.top <= Math.min(mWindow.top, mTempFrame.top);
                 boolean right = bounds.right >= Math.max(mWindow.right, mTempFrame.right);
                 boolean bottom = bounds.bottom >= Math.max(mWindow.bottom, mTempFrame.bottom);
                 result = left || top || right || bottom;
             }
+        }
+
+        return result;
+    }
+
+    // 判断文本是否超出了屏幕
+    public boolean isOutSideWindowBySticker() {
+        boolean result = false;
+        if (mForeSticker != null) {
+            RectF bounds = mForeSticker.getFrameNoIcon();
+
+            boolean left = bounds.left <= Math.min(mWindow.left, mTempFrame.left);
+            boolean top = bounds.top <= Math.min(mWindow.top, mTempFrame.top);
+            boolean right = bounds.right >= Math.max(mWindow.right, mTempFrame.right);
+            boolean bottom = bounds.bottom >= Math.max(mWindow.bottom, mTempFrame.bottom);
+            result = left || top || right || bottom;
         }
 
         return result;
@@ -533,10 +547,15 @@ public class IMGImage {
         }
 
         mCheckedDoodleIndex = i;
-        mTempFrame = new RectF(mFrame);
+        refreshTempFrame();
 
         return result;
     }
+
+    public void refreshTempFrame() {
+        mTempFrame = new RectF(mFrame);
+    }
+
 
     public void addPath(IMGPath path, float sx, float sy) {
         if (path == null) return;
@@ -577,23 +596,12 @@ public class IMGImage {
         if (sticker == null) return;
 
         if (!sticker.isShowing()) {
-            // 加入BackStickers中
-            boolean isExists = false;
-            for (IMGModel model : mGraffitis) {
-                if (model.equalsSticker(sticker)) {
-                    isExists = true;
-                    break;
-                }
-            }
-
-            if (!isExists) {
-                mGraffitis.add(new IMGModel(sticker));
-            }
-
             if (mForeSticker == sticker) {
                 mForeSticker = null;
             }
-        } else sticker.dismiss();
+        } else {
+            sticker.dismiss();
+        }
     }
 
     public void stickAll() {
@@ -740,7 +748,6 @@ public class IMGImage {
             }
 
             if (sticker != null) {
-                RectF sRect = model.getSticker().getFrame();
                 rectF = sticker.onDrawWhiteRect(rectF, whiteOffset);
             }
         }
@@ -926,6 +933,17 @@ public class IMGImage {
         M.mapRect(mFrame);
         M.mapRect(mOriginFrame);
         M.mapRect(mClipFrame);
+
+        for (IMGModel model : mGraffitis) {
+            IMGSticker sticker = model.getSticker();
+            if (sticker == null) continue;
+            M.mapRect(sticker.getFrame());
+            float tPivotX = sticker.getX() + sticker.getPivotX();
+            float tPivotY = sticker.getY() + sticker.getPivotY();
+            sticker.setScale(scale);
+            sticker.setX(sticker.getX() + sticker.getFrame().centerX() - tPivotX);
+            sticker.setY(sticker.getY() + sticker.getFrame().centerY() - tPivotY);
+        }
     }
 
     public void setScale(float scale) {

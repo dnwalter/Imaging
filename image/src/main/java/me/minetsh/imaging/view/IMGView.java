@@ -634,6 +634,30 @@ public class IMGView extends FrameLayout implements Runnable, ScaleGestureDetect
     }
 
     @Override
+    public void onTouchDown() {
+        mImage.refreshTempFrame();
+    }
+
+    @Override
+    public <V extends View & IMGSticker> void onTouchMove(V stickerView) {
+        invalidate();
+    }
+
+    @Override
+    public <V extends View & IMGSticker> void onTouchUp(V stickerView) {
+        mIsNeedHomingAfterDraw = true;
+        postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                if (mImage.isOutSideWindowBySticker()) {
+                    mImage.resetScaleToShowAll();
+                }
+                invalidate();
+            }
+        }, 500);
+    }
+
+    @Override
     public void onAnimationStart(Animator animation) {
         if (DEBUG) {
             Log.d(TAG, "onAnimationStart");

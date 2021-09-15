@@ -37,5 +37,14 @@ public interface IMGStickerPortrait {
         <V extends View & IMGSticker> void onShowing(V stickerView);
 
         <V extends View & IMGSticker> boolean onRemove(V stickerView);
+
+        // 从触摸文本的回调
+        void onTouchDown();
+
+        // 从触摸文本到抬起手指的回调
+        <V extends View & IMGSticker> void onTouchMove(V stickerView);
+
+        // 从触摸文本到抬起手指的回调
+        <V extends View & IMGSticker> void onTouchUp(V stickerView);
     }
 }

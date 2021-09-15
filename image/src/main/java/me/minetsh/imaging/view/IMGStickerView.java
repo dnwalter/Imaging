@@ -118,6 +118,8 @@ public abstract class IMGStickerView extends ViewGroup implements IMGSticker, Vi
 
     @Override
     public void setScale(float scale) {
+        scale = Math.max(scale, MIN_SCALE);
+        scale = Math.min(scale, MAX_SCALE);
         mScale = scale;
 
         mContentView.setScaleX(mScale);
@@ -140,8 +142,6 @@ public abstract class IMGStickerView extends ViewGroup implements IMGSticker, Vi
     @Override
     public void addScale(float scale) {
         float result = getScale() * scale;
-        result = Math.max(result, MIN_SCALE);
-        result = Math.min(result, MAX_SCALE);
         setScale(result);
     }
 
@@ -240,12 +240,18 @@ public abstract class IMGStickerView extends ViewGroup implements IMGSticker, Vi
         switch (event.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
                 mDownShowing++;
+                mStickerHelper.onTouchDown();
+                break;
+            case MotionEvent.ACTION_MOVE:
+                mStickerHelper.touchMove();
                 break;
             case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
                 if (mDownShowing > 1 && event.getEventTime() - event.getDownTime() < ViewConfiguration.getTapTimeout()) {
                     onContentTap();
                     return true;
                 }
+                mStickerHelper.touchUp();
                 break;
         }
 
@@ -293,6 +299,11 @@ public abstract class IMGStickerView extends ViewGroup implements IMGSticker, Vi
     }
 
     @Override
+    public RectF getFrameNoIcon() {
+        return new RectF(getFrame().left + ANCHOR_SIZE_HALF, getFrame().top + ANCHOR_SIZE_HALF, getFrame().right - ANCHOR_SIZE_HALF, getFrame().bottom - ANCHOR_SIZE_HALF);
+    }
+
+    @Override
     public void onSticker(Canvas canvas) {
         canvas.translate(mContentView.getX(), mContentView.getY());
         mContentView.draw(canvas);
@@ -300,7 +311,7 @@ public abstract class IMGStickerView extends ViewGroup implements IMGSticker, Vi
 
     @Override
     public RectF onDrawWhiteRect(RectF frame, float[] whiteOffset) {
-        RectF bounds = new RectF(getFrame().left + ANCHOR_SIZE_HALF, getFrame().top + ANCHOR_SIZE_HALF, getFrame().right - ANCHOR_SIZE_HALF, getFrame().bottom - ANCHOR_SIZE_HALF);
+        RectF bounds = getFrameNoIcon();
 
         RectF rect = new RectF(frame);
         if (bounds.left < frame.left) {

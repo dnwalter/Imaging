@@ -24,6 +24,14 @@ public class IMGStickerHelper<StickerView extends View & IMGSticker> implements
         mView = view;
     }
 
+    public void touchMove() {
+        onTouchMove(mView);
+    }
+
+    public void touchUp() {
+        onTouchUp(mView);
+    }
+
     @Override
     public boolean show() {
         if (!isShowing()) {
@@ -87,6 +95,29 @@ public class IMGStickerHelper<StickerView extends View & IMGSticker> implements
     @Override
     public <V extends View & IMGSticker> boolean onRemove(V stickerView) {
         return mCallback != null && mCallback.onRemove(stickerView);
+    }
+
+    @Override
+    public void onTouchDown() {
+        if (mCallback != null) {
+            mCallback.onTouchDown();
+        }
+    }
+
+    @Override
+    public <V extends View & IMGSticker> void onTouchMove(V stickerView) {
+        mFrame = null;
+        stickerView.invalidate();
+        if (mCallback != null) {
+            mCallback.onTouchMove(stickerView);
+        }
+    }
+
+    @Override
+    public <V extends View & IMGSticker> void onTouchUp(V stickerView) {
+        if (mCallback != null) {
+            mCallback.onTouchUp(stickerView);
+        }
     }
 
     @Override
