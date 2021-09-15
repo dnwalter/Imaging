@@ -928,7 +928,7 @@ public class IMGImage {
                 mWindow.height() / mClipFrame.height()
         );
 
-        float factor  = scale / getScale();
+        float factor  = scale;
 
         M.setScale(scale, scale, mClipFrame.centerX(), mClipFrame.centerY());
         M.postTranslate(mWindow.centerX() - mClipFrame.centerX(), mWindow.centerY() - mClipFrame.centerY());
