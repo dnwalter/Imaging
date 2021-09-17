@@ -236,6 +236,8 @@ public class IMGImage {
             // 初始化Shade 画刷
             initShadePaint();
 
+            mClipFrame.set(mFrame);
+
             // 备份裁剪前Clip 区域
             mBackupClipRotate = getRotate();
             mBackupClipFrame.set(mClipFrame);
@@ -258,7 +260,7 @@ public class IMGImage {
     }
 
     private void rotateStickers(float rotate) {
-        M.setRotate(rotate, mClipFrame.centerX(), mClipFrame.centerY());
+        M.setRotate(rotate, mFrame.centerX(), mFrame.centerY());
         for (IMGModel model : mGraffitis) {
             IMGSticker sticker = model.getSticker();
             if (sticker != null) {
@@ -416,8 +418,8 @@ public class IMGImage {
             }
         } else {
             RectF clipFrame = new RectF();
-            M.setRotate(getTargetRotate(), mClipFrame.centerX(), mClipFrame.centerY());
-            M.mapRect(clipFrame, mClipFrame);
+            M.setRotate(getTargetRotate(), mFrame.centerX(), mFrame.centerY());
+            M.mapRect(clipFrame, mFrame);
 
             RectF win = new RectF(mWindow);
             win.offset(scrollX, scrollY);
@@ -565,7 +567,7 @@ public class IMGImage {
         M.setTranslate(sx, sy);
 //        if (mInitialScale == getScale() || path.getMode() != IMGMode.DOODLE) {
 //        }
-        M.postRotate(-getRotate(), mClipFrame.centerX(), mClipFrame.centerY());
+        M.postRotate(-getRotate(), mFrame.centerX(), mFrame.centerY());
         M.postTranslate(-mOriginFrame.left, -mOriginFrame.top);
         M.postScale(scale, scale);
         path.transform(M);
@@ -643,7 +645,7 @@ public class IMGImage {
         } else {
 
             // Pivot to fit window.
-            M.setTranslate(mWindow.centerX() - mClipFrame.centerX(), mWindow.centerY() - mClipFrame.centerY());
+            M.setTranslate(mWindow.centerX() - mFrame.centerX(), mWindow.centerY() - mFrame.centerY());
             M.mapRect(mFrame);
             M.mapRect(mOriginFrame);
             M.mapRect(mClipFrame);
@@ -669,19 +671,14 @@ public class IMGImage {
     }
 
     private void toBaseHoming() {
-        if (mClipFrame.isEmpty()) {
-            // Bitmap invalidate.
-            return;
-        }
-
         float scale = Math.min(
-                mWindow.width() / mClipFrame.width(),
-                mWindow.height() / mClipFrame.height()
+                mWindow.width() / mFrame.width(),
+                mWindow.height() / mFrame.height()
         );
 
         // Scale to fit window.
-        M.setScale(scale, scale, mClipFrame.centerX(), mClipFrame.centerY());
-        M.postTranslate(mWindow.centerX() - mClipFrame.centerX(), mWindow.centerY() - mClipFrame.centerY());
+        M.setScale(scale, scale, mFrame.centerX(), mFrame.centerY());
+        M.postTranslate(mWindow.centerX() - mFrame.centerX(), mWindow.centerY() - mFrame.centerY());
         M.mapRect(mFrame);
         M.mapRect(mOriginFrame);
         M.mapRect(mClipFrame);
@@ -701,7 +698,7 @@ public class IMGImage {
 
         if (mIsStartClip) {
             // 裁剪区域
-            canvas.clipRect(mClipWin.isClipping() ? mFrame : mClipFrame);
+            canvas.clipRect(mFrame);
         }
 
         // 绘制图片
@@ -762,19 +759,15 @@ public class IMGImage {
             switch (i) {
                 case 0:
                     mFrame.left = mOriginFrame.left + offset;
-                    mClipFrame.left = mOriginFrame.left + offset;
                     break;
                 case 1:
                     mFrame.top = mOriginFrame.top + offset;
-                    mClipFrame.top = mOriginFrame.top + offset;
                     break;
                 case 2:
                     mFrame.right = mOriginFrame.right + offset;
-                    mClipFrame.right = mOriginFrame.right + offset;
                     break;
                 case 3:
                     mFrame.bottom = mOriginFrame.bottom + offset;
-                    mClipFrame.bottom = mOriginFrame.bottom + offset;
                     break;
             }
         }
@@ -791,13 +784,13 @@ public class IMGImage {
     }
 
     private void onDrawDoodles(Canvas canvas, IMGPath path, int index) {
-        canvas.save();
         float scale = getScale();
-        canvas.translate(mOriginFrame.left, mOriginFrame.top);
-        canvas.scale(scale, scale);
 
-        path.onDrawDoodle(canvas, mPaint, index == mCheckedDoodleIndex);
-        canvas.restore();
+        Matrix matrix = new Matrix();
+        matrix.preTranslate(mOriginFrame.left, mOriginFrame.top);
+        matrix.preScale(scale, scale);
+
+        path.onDrawDoodle(canvas, mPaint, matrix, index == mCheckedDoodleIndex);
     }
 
     public void onDrawStickerClip(Canvas canvas) {
@@ -924,14 +917,14 @@ public class IMGImage {
     public void resetScaleToShowAll() {
         Log.e("ousyyy", "isOutSide");
         float scale = Math.min(
-                mWindow.width() / mClipFrame.width(),
-                mWindow.height() / mClipFrame.height()
+                mWindow.width() / mFrame.width(),
+                mWindow.height() / mFrame.height()
         );
 
         float factor  = scale;
 
-        M.setScale(scale, scale, mClipFrame.centerX(), mClipFrame.centerY());
-        M.postTranslate(mWindow.centerX() - mClipFrame.centerX(), mWindow.centerY() - mClipFrame.centerY());
+        M.setScale(scale, scale, mFrame.centerX(), mFrame.centerY());
+        M.postTranslate(mWindow.centerX() - mFrame.centerX(), mWindow.centerY() - mFrame.centerY());
         M.mapRect(mFrame);
         M.mapRect(mOriginFrame);
         M.mapRect(mClipFrame);
@@ -949,7 +942,7 @@ public class IMGImage {
     }
 
     public void setScale(float scale) {
-        setScale(scale, mClipFrame.centerX(), mClipFrame.centerY());
+        setScale(scale, mFrame.centerX(), mFrame.centerY());
     }
 
     public void setScale(float scale, float focusX, float focusY) {
@@ -965,8 +958,8 @@ public class IMGImage {
 
         if (factor == 1f) return;
 
-        if (Math.max(mClipFrame.width(), mClipFrame.height()) >= MAX_SIZE
-                || Math.min(mClipFrame.width(), mClipFrame.height()) <= MIN_SIZE) {
+        if (Math.max(mFrame.width(), mFrame.height()) >= MAX_SIZE
+                || Math.min(mFrame.width(), mFrame.height()) <= MIN_SIZE) {
             factor += (1 - factor) / 2;
         }
 

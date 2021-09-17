@@ -136,7 +136,10 @@ public class IMGPath {
      * @param paint
      * @param isChecked
      */
-    public void onDrawDoodle(Canvas canvas, Paint paint, boolean isChecked) {
+    public void onDrawDoodle(Canvas canvas, Paint paint, Matrix matrix, boolean isChecked) {
+        Path path = new Path(this.path);
+        path.transform(matrix);
+
         if (mode == IMGMode.DOODLE) {
             if (isChecked) {
                 // todo ousy UI的设计师2px，要根据dp转换
