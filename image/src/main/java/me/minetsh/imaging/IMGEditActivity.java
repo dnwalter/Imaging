@@ -166,7 +166,6 @@ public class IMGEditActivity extends IMGEditBaseActivity {
         mImgView.doClip();
         setOpDisplay(mImgView.getMode() == IMGMode.CLIP ? OP_CLIP : OP_NORMAL);
         onModeClick(IMGMode.NONE);
-        mImgView.setNeedResetBitmap(true);
     }
 
     @Override

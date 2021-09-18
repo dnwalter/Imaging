@@ -571,7 +571,7 @@ public class IMGImage {
         M.postTranslate(-mOriginFrame.left, -mOriginFrame.top);
         M.postScale(scale, scale);
         path.transform(M);
-        path.setScaleRate(1 / getScale());
+        path.setScaleRate(1);
 
         switch (path.getMode()) {
             case DOODLE:
@@ -995,10 +995,9 @@ public class IMGImage {
     /**
      *
      * @param rotate
-     * @param isNeedResetBitmap 代表点击完成剪辑
      * @return
      */
-    public boolean onHomingEnd(boolean rotate, boolean isNeedResetBitmap) {
+    public boolean onHomingEnd(boolean rotate) {
         isDrawClip = true;
         if (mMode == IMGMode.CLIP) {
             // 开启裁剪模式
@@ -1012,10 +1011,8 @@ public class IMGImage {
             return clip;
         } else {
             if (isFreezing && !isAnimCanceled) {
-                if (!isNeedResetBitmap) {
-                    if (mViewCallback != null) {
-                        mViewCallback.onHoming();
-                    }
+                if (mViewCallback != null) {
+                    mViewCallback.onHoming();
                 }
 
                 setFreezing(false);
