@@ -258,8 +258,6 @@ public class IMGView extends FrameLayout implements Runnable, ScaleGestureDetect
             mImage.onDrawMosaic(canvas, count);
         }
 
-        mImage.onDrawShade(canvas);
-
         // 涂鸦
         mImage.onDrawGraffiti(canvas);
         if (mImage.getMode() == IMGMode.DOODLE && !mPen.isEmpty()) {
@@ -272,6 +270,8 @@ public class IMGView extends FrameLayout implements Runnable, ScaleGestureDetect
             canvas.drawPath(mPen.getPath(), mDoodlePaint);
             canvas.restore();
         }
+
+        mImage.onDrawShade(canvas);
 
         canvas.restore();
 

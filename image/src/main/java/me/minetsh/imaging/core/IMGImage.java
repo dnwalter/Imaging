@@ -571,7 +571,7 @@ public class IMGImage {
         M.postTranslate(-mOriginFrame.left, -mOriginFrame.top);
         M.postScale(scale, scale);
         path.transform(M);
-        path.setScaleRate(1);
+        path.setScaleRate(scale);
 
         switch (path.getMode()) {
             case DOODLE:
@@ -790,7 +790,7 @@ public class IMGImage {
         matrix.preTranslate(mOriginFrame.left, mOriginFrame.top);
         matrix.preScale(scale, scale);
 
-        path.onDrawDoodle(canvas, mPaint, matrix, index == mCheckedDoodleIndex);
+        path.onDrawDoodle(canvas, mPaint, matrix, scale, index == mCheckedDoodleIndex);
     }
 
     public void onDrawStickerClip(Canvas canvas) {

@@ -32,7 +32,7 @@ public class IMGPath {
     public static final float BASE_MOSAIC_WIDTH = 72f;
     
     // 缩放率
-    private float mScaleRate = 1f;
+    private float mScaleRate = 1f; // 添加path的时候图片当前的缩放率
 
     public IMGPath() {
         this(new Path());
@@ -136,14 +136,14 @@ public class IMGPath {
      * @param paint
      * @param isChecked
      */
-    public void onDrawDoodle(Canvas canvas, Paint paint, Matrix matrix, boolean isChecked) {
+    public void onDrawDoodle(Canvas canvas, Paint paint, Matrix matrix, float scale, boolean isChecked) {
         Path path = new Path(this.path);
         path.transform(matrix);
 
         if (mode == IMGMode.DOODLE) {
             if (isChecked) {
                 // todo ousy UI的设计师2px，要根据dp转换
-                float width = (BASE_DOODLE_WIDTH + 4f) * mScaleRate;
+                float width = (BASE_DOODLE_WIDTH + 4f) * mScaleRate * scale;
                 Paint paintShadow = new Paint(paint);
                 paintShadow.setStrokeWidth(width);
                 paintShadow.setColor(Color.WHITE);
@@ -153,8 +153,8 @@ public class IMGPath {
             }
             // 画线
             paint.setColor(color);
-            paint.setStrokeWidth(BASE_DOODLE_WIDTH * mScaleRate);
-            paint.setPathEffect(new CornerPathEffect(BASE_DOODLE_WIDTH * mScaleRate));
+            paint.setStrokeWidth(BASE_DOODLE_WIDTH * mScaleRate * scale);
+            paint.setPathEffect(new CornerPathEffect(BASE_DOODLE_WIDTH * mScaleRate * scale));
             // rewind
             canvas.drawPath(path, paint);
 
